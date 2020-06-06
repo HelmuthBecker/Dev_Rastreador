@@ -12,8 +12,9 @@
 #include <EBYTE.h>
 #include <SoftwareSerial.h>
 
+int id_equipe;
 
-char mensagem[5];  //Array de caracteres que irá armazenar a mensagem a ser recebida
+char mensagem[3];  //Array de caracteres que irá armazenar a mensagem a ser recebida
 size_t bytesRecebidos;
 
 SoftwareSerial mySerial(9,6); //Rx - Tx (LORA)
@@ -30,6 +31,7 @@ iniciarLORA(); //Função que passa os parâmetros de funcionamento do módulo L
 
 void loop() 
  {  
+             
              percursoFake(); //Função que gera um percurso FAKE (apenas para testes temporariamente)
  }
 
@@ -47,8 +49,8 @@ void loop()
      emissor.SetUARTBaudRate(UDR_9600);                         //BAUDRate 9600
      emissor.SetChannel(23);                                    //Canal 23
      emissor.SetParityBit(PB_8N1);                              //Bit Paridade 8N1
-     //emissor.SetTransmitPower(OPT_TP30);                        //Força de transmissão 30db (Para módulos de 1W/8km definir como 30)
-     emissor.SetTransmitPower(OPT_TP20);                      //Força de transmissão 20db (Para módulos 100mW/3km definir como 20)
+     emissor.SetTransmitPower(OPT_TP30);                        //Força de transmissão 30db (Para módulos de 1W/8km definir como 30)
+     //emissor.SetTransmitPower(OPT_TP20);                      //Força de transmissão 20db (Para módulos 100mW/3km definir como 20)
      emissor.SetWORTIming(OPT_WAKEUP250);                       //WakeUP Time(?) 2000
      emissor.SetFECMode(OPT_FECENABLE);                         //FEC(?) ENABLE
      emissor.SetTransmissionMode(OPT_FMDISABLE);                //Transmission Mode
@@ -71,16 +73,16 @@ void percursoFake() //Função que gera um percurso FAKE (apenas para testes tem
     {
      pausa = millis() + 3000;
      LO -= vel ;
-     //dados = "[06,-26.242370,-48.64"+(String)LO+"]*";
-     //dados = "[07,-26.242370,-48.64"+(String)LO+"]*"; //Para cada equipe, substituir de acordo, para que os módulos não enviem informações idênticas
      dados = "[08,-26.242370,-48.64"+(String)LO+"]*";
+     //dados = "[09,-26.242370,-48.64"+(String)LO+"]*"; //Para cada equipe, substituir de acordo, para que os módulos não enviem informações idênticas
+     //dados = "[10,-26.242370,-48.64"+(String)LO+"]*";
      Serial.println(dados);
-        
+             
      while (pausa > millis()){
         receber();
-        if (mensagem[0] == 'I' ){
-        //if (mensagem[0] == 'S' ){
-        //if (mensagem[0] == 'A' ){
+        //if (id_equipe == 10 ){
+        //if (id_equipe == 9){
+        if (id_equipe == 8){
           mySerial.print(dados);
           break;
           }
@@ -92,16 +94,16 @@ void percursoFake() //Função que gera um percurso FAKE (apenas para testes tem
      pausa = millis() + 3000;
      LO = 1880;
      NS += vel;
-     //dados = "[06,-26.24"+(String)NS+",-48.641880]*";
-     //dados = "[07,-26.24"+(String)NS+",-48.641880]*";
      dados = "[08,-26.24"+(String)NS+",-48.641880]*";
+     //dados = "[09,-26.24"+(String)NS+",-48.641880]*";
+     //dados = "[10,-26.24"+(String)NS+",-48.641880]*";
      Serial.println(dados);
      
      while (pausa > millis()){
         receber();
-        if (mensagem[0] == 'I' ){
-        //if (mensagem[0] == 'S' ){
-        //if (mensagem[0] == 'A' ){
+        //if (id_equipe == 10){
+        //if (id_equipe == 9){
+        if (id_equipe == 8){
           mySerial.print(dados);
           break;
           }
@@ -114,16 +116,16 @@ void percursoFake() //Função que gera um percurso FAKE (apenas para testes tem
      NS = 5150;
      LO += vel;
 
-     //dados = "[06,-26.245150,-48.64"+(String)LO+"]*";
-     //dados = "[07,-26.245150,-48.64"+(String)LO+"]*";
      dados = "[08,-26.245150,-48.64"+(String)LO+"]*";
+     //dados = "[09,-26.245150,-48.64"+(String)LO+"]*";
+     //dados = "[10,-26.245150,-48.64"+(String)LO+"]*";
      Serial.println(dados);
      
      while (pausa > millis()){
         receber();
-        if (mensagem[0] == 'I' ){
-        //if (mensagem[0] == 'S' ){
-        //if (mensagem[0] == 'A' ){
+        //if (id_equipe == 10){
+        //if (id_equipe == 9){
+        if (id_equipe == 8){
           mySerial.print(dados);
           break;
           }
@@ -135,31 +137,35 @@ void percursoFake() //Função que gera um percurso FAKE (apenas para testes tem
       pausa = millis() + 3000;
      NS -= vel;
 
-    //dados = "[06,-26.24"+(String)NS+",-48.644660]*";
-     //dados = "[07,-26.24"+(String)NS+",-48.644660]*";
      dados = "[08,-26.24"+(String)NS+",-48.644660]*";
+     //dados = "[09,-26.24"+(String)NS+",-48.644660]*";
+     //dados = "[10,-26.24"+(String)NS+",-48.644660]*";
      Serial.println(dados);
 
      while (pausa > millis()){
         receber();
-        if (mensagem[0] == 'I' ){
-        //if (mensagem[0] == 'S' ){
-        //if (mensagem[0] == 'A' ){
+        
+        //if (id_equipe == 10){
+        //if (id_equipe == 9){
+        if (id_equipe == 8){
           mySerial.print(dados);
           break;
        }
      }
    }
-
  }
  
 void receber() //Função responsavel por receber as mensagens de solicitação do módulo receptor
   {
+    
+    
   //Limpa a variavel mensagem, antes do uso
-     for (byte a = 0; a < 4; a++ ){
+     for (byte a = 0; a < 2; a++ ){
        mensagem[a] = "";
      }
      while (mySerial.available()){ //Se houver dados a receber pela serial lógica
-       bytesRecebidos = mySerial.readBytesUntil('*', mensagem, 4);//Recebe o caracter e o atribui a variavek mensagem
+       bytesRecebidos = mySerial.readBytesUntil('*', mensagem, 2);//Recebe o caracter e o atribui a variavek mensagem
     }
-  }
+      String id_txt = String(mensagem[0])+""+String(mensagem[1]); //cria uma string com os valores contidos em mesagem[1] e mensagem[2] **esta no formato 09(dois caracteres
+      id_equipe = id_txt.toInt();   //converte a string em int para uso no switch case **quando convertido de string para int, passa para 1 caracter 09 -> 9, 10 -> 10
+    }

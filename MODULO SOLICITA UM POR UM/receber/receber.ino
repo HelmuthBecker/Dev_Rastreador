@@ -20,9 +20,9 @@
 #include <SoftwareSerial.h>
 
 #define ARDUINO_CLIENT_ID "ARDUINO"           // Client ID for Arduino pub/sub
-#define PUB_6 "/app/dados/equipe6"            // Tópico MQTT para equipe 6
-#define PUB_7 "/app/dados/equipe7"            // Tópico MQTT para equipe 7
 #define PUB_8 "/app/dados/equipe8"            // Tópico MQTT para equipe 8
+#define PUB_9 "/app/dados/equipe9"            // Tópico MQTT para equipe 9
+#define PUB_10 "/app/dados/equipe10"            // Tópico MQTT para equipe 10
 
 #define LED1 9
 #define LED2 8
@@ -30,7 +30,6 @@
 
 char mensagem[27];  //Array de caracteres que irá armazenar a mensagem a ser recebida
 size_t bytesRecebidos;
-byte sair;
 SoftwareSerial mySerial(3,6);                 //Rx - Tx
 
 EBYTE emissor(&mySerial, 5, 4, 2);
@@ -69,8 +68,6 @@ void loop()
        reconectar();
       } */
       solicitar();
-     //receberEnviar();
-     delay (1000);  
   }
 
 void iniciarLORA ()   //Função que define os parâmetros de configuração do módulo LORA
@@ -119,31 +116,33 @@ void reconectar() //Função que reconecta caso a conexão com o MQTT seja perdi
       }
   }
 
-void solicitar(){     //
+  void solicitar(){  
   unsigned long pausa;
+
+  for (byte a = 8; a < 11 ; a++){
+  pausa = millis() + 3000;
   
-  pausa = millis() + 3000;
-  mySerial.print("STOP*");
-  while (pausa > millis()){
-    receberEnviar();
+  if (a < 10){
+    Serial.println("0"+(String)a+"*");
+    mySerial.print("0"+(String)a+"*");
+    while (pausa > millis()){
+    receberEnviar();  
+    }
   }
-
-  pausa = millis() + 3000;
-  mySerial.print("ATOP*");
-  while (pausa > millis()){
-        receberEnviar();
-        }
-
-  pausa = millis() + 3000;
-  sair = 0;
-  mySerial.print("ITOP*");
-  while (pausa > millis()){
-        receberEnviar();
-        }
+  if (a >= 10){
+    Serial.println((String)a+"*");
+    mySerial.print((String)a+"*");
+    while (pausa > millis()){
+    receberEnviar(); 
+    }
+  }
+ }
 }
 
 void receberEnviar()
   {
+    
+    
   //Limpa a variavel mensagem, antes do uso
      for (byte a = 0; a < 26; a++ )
       {
@@ -155,13 +154,16 @@ void receberEnviar()
       {
          bytesRecebidos = mySerial.readBytesUntil('*', mensagem, 26);
         }
-       
-  //Analisa a mensagem recebida e publica no tópico de acordo com a ID da equipe (a ID da equipe está na posição 2 do array mensagem)   
 
-     switch (mensagem[2])
+      String id_txt = String(mensagem[1])+""+String(mensagem[2]); //cria uma string com os valores contidos em mesagem[1] e mensagem[2]
+      int id_equipe = id_txt.toInt();   //converte a string em int para uso no switch case
+             
+  //Analisa a mensagem recebida e publica no tópico de acordo com a ID da equipe (a ID da equipe está na variavel id_equip)   
+
+     switch (id_equipe)
       {
-        case '6':
-         client.beginPublish (PUB_6, 26, false); //Inicia a publicação no MQTT
+        case 8:
+         client.beginPublish (PUB_8, 26, false); //Inicia a publicação no MQTT
          client.print(mensagem); //Publica a mensagem
          client.endPublish(); //Encerra a publicação no MQTT
          Serial.println(mensagem); //Exibe a mensagem na serial (apenas para verificação e teste)
@@ -174,8 +176,8 @@ void receberEnviar()
          digitalWrite(LED1, LOW);
          break;
         
-         case '7':
-         client.beginPublish (PUB_7, 26, false);
+         case 9:
+         client.beginPublish (PUB_9, 26, false);
          client.print(mensagem);
          client.endPublish();
          Serial.println(mensagem);
@@ -188,8 +190,8 @@ void receberEnviar()
          digitalWrite(LED2, LOW);
          break;
      
-         case '8':
-         client.beginPublish (PUB_8, 26, false);
+         case 10:
+         client.beginPublish (PUB_10, 26, false);
          client.print(mensagem);
          client.endPublish();
          Serial.println(mensagem);
