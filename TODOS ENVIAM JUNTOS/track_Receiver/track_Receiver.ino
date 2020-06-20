@@ -64,10 +64,10 @@ void setup() {
 
 void loop()  
 	{
- 	 if (!client.connected())
+ 	 /*if (!client.connected())
      	{
      	 reconectar();
-    	} 
+    	} */
  
      receberEnviar();
      delay (1000);  
@@ -141,6 +141,14 @@ void receberEnviar()
          client.print(mensagem); //Publica a mensagem
          client.endPublish(); //Encerra a publicação no MQTT
          Serial.println(mensagem); //Exibe a mensagem na serial (apenas para verificação e teste)
+         mySerial.print("STOP*");
+         digitalWrite(LED1, HIGH);
+         delay(500);
+         digitalWrite(LED1, LOW);
+         delay(500);
+         digitalWrite(LED1, HIGH);
+         delay(500);
+         digitalWrite(LED1, LOW);
          break;
         
          case '7':
@@ -148,6 +156,14 @@ void receberEnviar()
          client.print(mensagem);
          client.endPublish();
          Serial.println(mensagem);
+         mySerial.print("STOP*");
+         digitalWrite(LED2, HIGH);
+         delay(500);
+         digitalWrite(LED2, LOW);
+         delay(500);
+         digitalWrite(LED2, HIGH);
+         delay(500);
+         digitalWrite(LED2, LOW);
          break;
      
        	 case '8':
@@ -155,6 +171,14 @@ void receberEnviar()
          client.print(mensagem);
          client.endPublish();
          Serial.println(mensagem);
+         mySerial.print("STOP*");
+         digitalWrite(LED3, HIGH);
+         delay(500);
+         digitalWrite(LED3, LOW);
+         delay(500);
+         digitalWrite(LED3, HIGH);
+         delay(500);
+         digitalWrite(LED3, LOW);
          break;
            
          default:
