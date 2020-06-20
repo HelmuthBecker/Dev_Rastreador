@@ -49,8 +49,8 @@ void loop()
      emissor.SetUARTBaudRate(UDR_9600);                         //BAUDRate 9600
      emissor.SetChannel(23);                                    //Canal 23
      emissor.SetParityBit(PB_8N1);                              //Bit Paridade 8N1
-     emissor.SetTransmitPower(OPT_TP30);                        //Força de transmissão 30db (Para módulos de 1W/8km definir como 30)
-     //emissor.SetTransmitPower(OPT_TP20);                      //Força de transmissão 20db (Para módulos 100mW/3km definir como 20)
+     //emissor.SetTransmitPower(OPT_TP30);                        //Força de transmissão 30db (Para módulos de 1W/8km definir como 30)
+     emissor.SetTransmitPower(OPT_TP20);                      //Força de transmissão 20db (Para módulos 100mW/3km definir como 20)
      emissor.SetWORTIming(OPT_WAKEUP250);                       //WakeUP Time(?) 2000
      emissor.SetFECMode(OPT_FECENABLE);                         //FEC(?) ENABLE
      emissor.SetTransmissionMode(OPT_FMDISABLE);                //Transmission Mode
