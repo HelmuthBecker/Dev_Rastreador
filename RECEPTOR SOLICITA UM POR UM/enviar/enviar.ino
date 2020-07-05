@@ -15,29 +15,30 @@
 #define AMOSTRAS 12             //Usado na função lePorta. Numero de vezes que a função irá ler o valor na porta A2, para tirar a média dos valores, para calculo de tensão na bateria.
 //String dados;
 float tensaoA2;                 //Usado na função tensaoBat. Variável que armazena o valor da tensão da bateria
-int id_equipe;                  //Usado na função receber. Armazena o id da equipe recebido pelo módulo
+String id_equipe;               //Usado na função receber. Armazena o id da equipe recebido pelo módulo
 char mensagem[3];               //Usado na função receber. Array de caracteres que irá armazenar a mensagem de requisição recebida
+String mensagemrecebida;
 size_t bytesRecebidos;
 
-SoftwareSerial serialLORA(9,6); //Rx - Tx (LORA)
-SoftwareSerial serialGPS(2,3);  //Rx - Tx (GPS)
+SoftwareSerial serialLORA(9,6);         //Rx - Tx (LORA)
+SoftwareSerial serialGPS(2,3);          //Rx - Tx (GPS)
 
-EBYTE emissor(&serialLORA, 7, 8, 10); //Parâmetros do módulo LORA (RX,TX,M0,M1,AUX)
-TinyGPS gps;      //Objeto TinyGPS
+EBYTE emissor(&serialLORA, 7, 8, 10);   //Parâmetros do módulo LORA (RX,TX,M0,M1,AUX)
+TinyGPS gps;                            //Objeto TinyGPS
 
 void setup() {
   
-Serial.begin(9600); //Inicia a serial física
-serialLORA.begin(9600); //Inicia a serial LORA
-serialGPS.begin(9600);  //Inicia a serial GPS
+Serial.begin(9600);                     //Inicia a serial física
+serialLORA.begin(9600);                 //Inicia a serial LORA
+serialGPS.begin(9600);                  //Inicia a serial GPS
 delay(1000);
 
-iniciarLORA(); //Função que passa os parâmetros de funcionamento do módulo LORA
+iniciarLORA();                          //Função que passa os parâmetros de funcionamento do módulo LORA
 }
 
 void loop() {             
-             //getGPS(); //Função que obtem os dados do GPS
-             percursoFake(); //Função que obtem os dados FAKES
+     //getGPS();                        //Função que obtem os dados do GPS
+     percursoFake();                    //Função que obtem os dados FAKES
  }
 
  void iniciarLORA () 
@@ -64,31 +65,25 @@ void loop() {
      emissor.PrintParameters();                                 //Exibe os parâmetros configurados
   } //Fim iniciarLORA 
 
-float lePorta(uint8_t portaAnalogica) {           //Função que lê o valor de tensão recebido na porta A2 
+float lePorta(uint8_t portaAnalogica) {                         //Função que lê o valor de tensão recebido na porta A2 
   float total=0;  
   for (int i=0; i<AMOSTRAS; i++) {
     total += 1.0 * analogRead(portaAnalogica);
     delay(5);
   }
-  return total / (float)AMOSTRAS;               //retorna o valor médio obtido das 12 leituras na porta A2
+  return total / (float)AMOSTRAS;                               //retorna o valor médio obtido das 12 leituras na porta A2
 }
 
-void tensaoBat() {      //Função que calcula o valor de tensão da bateria, de acordo com o valor lido na porta A2
+void tensaoBat() {                                              //Função que calcula o valor de tensão da bateria, de acordo com o valor lido na porta A2
 
-float aRef=5;           //Máximo valor de tensão aceito pela porta A2
-float relacaoA2=2.75;   //Fator para transformar o valor Vout recebido na porta A2, no valor de Vin (que entra antes do divisor de tensão) 
+float aRef=5;                                                   //Máximo valor de tensão aceito pela porta A2
+float relacaoA2=2.75;                                           //Fator para transformar o valor Vout recebido na porta A2, no valor de Vin (que entra antes do divisor de tensão) 
   
-  tensaoA2 = ((lePorta(A2) * aRef) / 1024.0)* relacaoA2;    
-  //Serial.print("Tensao em A2: ");
-  //Serial.print(tensaoA2);       //Tensão da bateria
-  //Serial.print ("V / ");
-  //Serial.println("");
+  tensaoA2 = ((lePorta(A2) * aRef) / 1024.0)* relacaoA2;        //Calculo de tensão
 }  
 
-void getGPS(){ //Função que obtém os dados de GPS
+void getGPS(){                                                  //Função que obtém os dados de GPS
 
-   tensaoBat();         //Chama a função que irá obter a tensão da bateria
-   
    serialGPS.listen();
     
    bool recebido = false;
@@ -98,39 +93,37 @@ void getGPS(){ //Função que obtém os dados de GPS
 
    pausa = millis() + 10000;
 
-//Recebe os dados pela serial do GPS
-  while (serialGPS.available()) {
+  while (serialGPS.available()) {                             //Recebe os dados pela serial do GPS
      char cIn = serialGPS.read();
      recebido = gps.encode(cIn);
   }if (recebido) {
-     gps.get_datetime(&date, &tempo, &idadeInfo);   //Obtem data e hora dos dados recebidos anteriormente
-     gps.f_get_position(&flat, &flon, &idadeInfo);  //Obtem latitude e longitude dos dados recebidos anteriormente
+     gps.get_datetime(&date, &tempo, &idadeInfo);             //Obtem data e hora dos dados recebidos anteriormente
+     gps.f_get_position(&flat, &flon, &idadeInfo);            //Obtem latitude e longitude dos dados recebidos anteriormente
 
-     tempo = ((tempo/10000)-300);     //Converte o formato da hora de HHMMSSMS para HHMM
-     date = (date/100);               //Converte o formato da data de DDMMAA para DDMM
+     tempo = ((tempo/10000)-300);                             //Converte o formato da hora de HHMMSSMS para HHMM
+     date = (date/100);                                       //Converte o formato da data de DDMMAA para DDMM
 
      if (tempo < 1000){
-        horaMin = "0"+String(tempo); //Adiciona zero a esquerda para horas menores que 10, mantendo o numero padrão de 4 char(HHMM)
+        horaMin = "0"+String(tempo);                          //Adiciona zero a esquerda para horas menores que 10, mantendo o numero padrão de 4 char(HHMM)
      } else{
-      horaMin = String(tempo);      //Para horas maiores que 10, não adiciona nada, apenas passa o valor como string para outra variavel
+      horaMin = String(tempo);                                //Para horas maiores que 10, não adiciona nada, apenas passa o valor como string para outra variavel
      }
 
      if (date < 1000){              
-      diaMes = "0"+String(date);   //Adiciona zero a esquerda para dias menores que 10, mantendo o numero padrão de 4 char (DDMM)
+      diaMes = "0"+String(date);                              //Adiciona zero a esquerda para dias menores que 10, mantendo o numero padrão de 4 char (DDMM)
      } else{
-      diaMes = String(date);       //Para dias maiores que 10, não adiciona nada, apenas passa o valor como string para outra variavel
+      diaMes = String(date);                                  //Para dias maiores que 10, não adiciona nada, apenas passa o valor como string para outra variavel
      }
-          
-     dados = "[09,"+String(flat,6)+","+String(flon,6)+","+diaMes+","+horaMin+","+gps.f_speed_knots()+","+String(tensaoA2,2)+"]*";        //Forma a string de dados que será enviada (
-     //dados = "[09,"+String(flat,6)+","+String(flon,6)+"]*";
-     Serial.println(dados);
-     //usa a função receber para aguardar por 10seg caso o receptor solicite dados
-     while (pausa > millis()){
+
+     tensaoBat();                                             //Chama a função que irá obter a tensão da bateria
+
+     dados = "[09,"+String(flat,6)+","+String(flon,6)+","+diaMes+","+horaMin+","+String(gps.f_speed_knots(),1)+","+String(tensaoA2,1)+"]*";        //Forma a string de dados que será enviada (
+     Serial.println(dados);                                  //Exibe os dados (apenas para fins de teste)
+     
+     while (pausa > millis()){                               //deixa ativa a função receber por 10seg para aguardar caso o receptor solicite dados
         receber();
-        //if (id_equipe == 10 ){
-        if (id_equipe == 9){
-          serialLORA.listen();    //caso o receptor solicite dados, envia a string com os dados fornecidos pelo GPS
-           //if (id_equipe == 8){
+          if (id_equipe == "09"){                            //caso receba a ID correspondente, envia a string com os dados fornecidos pelo GPS 
+          serialLORA.listen();    
           serialLORA.print(dados);
           break;
           }
@@ -138,27 +131,25 @@ void getGPS(){ //Função que obtém os dados de GPS
    }
 }     
   
-void receber() //Função responsavel por receber as mensagens de solicitação de dados do módulo receptor
+void receber()                                                          //Função responsavel por receber as mensagens de solicitação de dados do módulo receptor
   {
    serialLORA.listen(); 
     
-  //Limpa a variavel mensagem, antes do uso
-     for (byte a = 0; a < 2; a++ ){
+   for (byte a = 0; a < 2; a++ ){                                       //Limpa a variavel mensagem, antes do uso
        mensagem[a] = "";
      }
-     while (serialLORA.available()){ //Se houver dados a receber pela serial lógica
-       bytesRecebidos = serialLORA.readBytesUntil('*', mensagem, 2);//Recebe o caracter e o atribui a variavel mensagem
+     while (serialLORA.available()){                                    //Se houver dados a receber pela serial lógica
+       bytesRecebidos = serialLORA.readBytesUntil('*', mensagem, 2);    //Recebe o caracter e o atribui a variavel mensagem
     } 
-      String id_txt = String(mensagem[0])+""+String(mensagem[1]); //cria uma string com os valores contidos em mesagem[1] e mensagem[2] **esta no formato 09(dois caracteres)
-      id_equipe = id_txt.toInt();   //converte a string em int para uso no loop while que verifica se a solicitação foi recebida **quando convertido de string para int, passa para 1 caracter 09 -> 9
-    }
+      id_equipe = String(mensagem[0])+""+String(mensagem[1]);           //cria uma string com os valores contidos em mesagem[1] e mensagem[2] **esta no formato 09(dois caracteres)
+      }
 
-void percursoFake() //Função que gera um percurso FAKE (apenas para testes temporariamente)
+void percursoFake()                                                     //Função que gera um percurso FAKE (apenas para testes temporariamente)
  {
 
    int vel = 100; //Define de quanto em quanto o loop irá avançar até atingir o valor limite definido no while
-   int LO = 4660; //Valores de longitude
-   int NS = 2370; //Valores de latitude
+   int LO = 4660; //Valores iniciais de longitude
+   int NS = 2370; //Valores iniciais de latitude
    String dados;
    unsigned long pausa;
    
@@ -166,19 +157,20 @@ void percursoFake() //Função que gera um percurso FAKE (apenas para testes tem
     {
      pausa = millis() + 10000;
      LO -= vel ;
-     tensaoBat();         //Chama a função que irá obter a tensão da bateria
-     //dados = "[08,-26.242370,-48.64"+(String)LO+","+String(tensaoA2,2)+"]*";
-     //dados = "[09,-26.242370,-48.64"+(String)LO+","+String(tensaoA2,2)+"]*"; //Para cada equipe, substituir de acordo, para que os módulos não enviem informações idênticas
-     dados = "[10,-26.242370,-48.64"+(String)LO+","+String(tensaoA2,2)+"]*";
+     tensaoBat();                                                      //Chama a função que irá obter a tensão da bateria
+     dados = "[08,-26.242370,-48.64"+(String)LO+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
+     //dados = "[09,-26.242370,-48.64"+(String)LO+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*"; //Para cada equipe, substituir de acordo, para que os módulos não enviem informações idênticas
+     //dados = "[10,-26.242370,-48.64"+(String)LO+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
      Serial.println(dados);
              
      while (pausa > millis()){
         receber();
-        if (id_equipe == 10 ){
-        //if (id_equipe == 9){
-        //if (id_equipe == 8){
+        //if (id_equipe == "10" ){
+        //if (id_equipe == "09"){
+        if (id_equipe == "08"){
           serialLORA.listen();
           serialLORA.print(dados);
+          serialLORA.print(mensagemrecebida);
           break;
           }
         }
@@ -190,16 +182,16 @@ void percursoFake() //Função que gera um percurso FAKE (apenas para testes tem
      LO = 1880;
      NS += vel;
      tensaoBat();         //Chama a função que irá obter a tensão da bateria
-     //dados = "[08,-26.24"+(String)NS+",-48.641880"+","+String(tensaoA2,2)+"]*";
-     //dados = "[09,-26.24"+(String)NS+",-48.641880"+","+String(tensaoA2,2)+"]*";
-     dados = "[10,-26.24"+(String)NS+",-48.641880"+","+String(tensaoA2,2)+"]*";
+     dados = "[08,-26.24"+(String)NS+",-48.641880"+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
+     //dados = "[09,-26.24"+(String)NS+",-48.641880"+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
+     //dados = "[10,-26.24"+(String)NS+",-48.641880"+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
      Serial.println(dados);
      
      while (pausa > millis()){
         receber();
-        if (id_equipe == 10){
-        //if (id_equipe == 9){
-        //if (id_equipe == 8){
+        //if (id_equipe == "10" ){
+        //if (id_equipe == "09"){
+        if (id_equipe == "08"){
           serialLORA.listen();
           serialLORA.print(dados);
           break;
@@ -212,17 +204,17 @@ void percursoFake() //Função que gera um percurso FAKE (apenas para testes tem
       pausa = millis() + 3000;
      NS = 5150;
      LO += vel;
-     tensaoBat();         //Chama a função que irá obter a tensão da bateria
-     //dados = "[08,-26.245150,-48.64"+(String)LO+","+String(tensaoA2,2)+"]*";
-     //dados = "[09,-26.245150,-48.64"+(String)LO+","+String(tensaoA2,2)+"]*";
-     dados = "[10,-26.245150,-48.64"+(String)LO+","+String(tensaoA2,2)+"]*";
+     tensaoBat();         
+     dados = "[08,-26.245150,-48.64"+(String)LO+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
+     //dados = "[09,-26.245150,-48.64"+(String)LO+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
+     //dados = "[10,-26.245150,-48.64"+(String)LO+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
      Serial.println(dados);
      
      while (pausa > millis()){
         receber();
-        if (id_equipe == 10){
-        //if (id_equipe == 9){
-        //if (id_equipe == 8){
+        //if (id_equipe == "10" ){
+        //if (id_equipe == "09"){
+        if (id_equipe == "08"){
           serialLORA.listen();
           serialLORA.print(dados);
           break;
@@ -234,18 +226,18 @@ void percursoFake() //Função que gera um percurso FAKE (apenas para testes tem
     {
       pausa = millis() + 3000;
      NS -= vel;
-      tensaoBat();         //Chama a função que irá obter a tensão da bateria
-     //dados = "[08,-26.24"+(String)NS+",-48.644660"+","+String(tensaoA2,2)+"]*";
-     //dados = "[09,-26.24"+(String)NS+",-48.644660"+","+String(tensaoA2,2)+"]*";
-     dados = "[10,-26.24"+(String)NS+",-48.644660"+","+String(tensaoA2,2)+"]*";
+      tensaoBat();         
+     dados = "[08,-26.24"+(String)NS+",-48.644660"+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
+     //dados = "[09,-26.24"+(String)NS+",-48.644660"+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
+     //dados = "[10,-26.24"+(String)NS+",-48.644660"+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
      Serial.println(dados);
 
      while (pausa > millis()){
         receber();
         
-        if (id_equipe == 10){
-        //if (id_equipe == 9){
-        //if (id_equipe == 8){
+        //if (id_equipe == "10"){
+        //if (id_equipe == "09"){
+        if (id_equipe == "08"){
           serialLORA.listen();
           serialLORA.print(dados);
           break;
