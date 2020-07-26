@@ -17,7 +17,7 @@
 float tensaoA2;                 //Usado na função tensaoBat. Variável que armazena o valor da tensão da bateria
 String id_equipe;               //Usado na função receber. Armazena o id da equipe recebido pelo módulo
 char mensagem[3];               //Usado na função receber. Array de caracteres que irá armazenar a mensagem de requisição recebida
-String mensagemrecebida;
+//String mensagemrecebida;
 size_t bytesRecebidos;
 
 SoftwareSerial serialLORA(9,6);         //Rx - Tx (LORA)
@@ -37,8 +37,8 @@ iniciarLORA();                          //Função que passa os parâmetros de f
 }
 
 void loop() {             
-     //getGPS();                        //Função que obtem os dados do GPS
-     percursoFake();                    //Função que obtem os dados FAKES
+     getGPS();                        //Função que obtem os dados do GPS
+     //percursoFake();                    //Função que obtem os dados FAKES
  }
 
  void iniciarLORA () 
@@ -117,12 +117,12 @@ void getGPS(){                                                  //Função que o
 
      tensaoBat();                                             //Chama a função que irá obter a tensão da bateria
 
-     dados = "[09,"+String(flat,6)+","+String(flon,6)+","+diaMes+","+horaMin+","+String(gps.f_speed_knots(),1)+","+String(tensaoA2,1)+"]*";        //Forma a string de dados que será enviada (
-     Serial.println(dados);                                  //Exibe os dados (apenas para fins de teste)
+     dados = "[33,"+String(flat,6)+","+String(flon,6)+","+diaMes+","+horaMin+","+String(gps.f_speed_knots(),1)+","+String(tensaoA2,1)+"]*";        //Forma a string de dados que será enviada (
+     Serial.println(dados);                                  //Exibe os dados (apenas para fins de teste
      
      while (pausa > millis()){                               //deixa ativa a função receber por 10seg para aguardar caso o receptor solicite dados
         receber();
-          if (id_equipe == "09"){                            //caso receba a ID correspondente, envia a string com os dados fornecidos pelo GPS 
+          if (id_equipe == "33"){                            //caso receba a ID correspondente, envia a string com os dados fornecidos pelo GPS 
           serialLORA.listen();    
           serialLORA.print(dados);
           break;
@@ -131,20 +131,20 @@ void getGPS(){                                                  //Função que o
    }
 }     
   
-void receber()                                                          //Função responsavel por receber as mensagens de solicitação de dados do módulo receptor
+void receber()                                                //Função responsavel por receber as mensagens de solicitação de dados do módulo receptor
   {
    serialLORA.listen(); 
     
-   for (byte a = 0; a < 2; a++ ){                                       //Limpa a variavel mensagem, antes do uso
+   for (byte a = 0; a < 2; a++ ){                             //Limpa a variavel mensagem, antes do uso
        mensagem[a] = "";
      }
-     while (serialLORA.available()){                                    //Se houver dados a receber pela serial lógica
+     while (serialLORA.available()){                          //Se houver dados a receber pela serial lógica
        bytesRecebidos = serialLORA.readBytesUntil('*', mensagem, 2);    //Recebe o caracter e o atribui a variavel mensagem
     } 
-      id_equipe = String(mensagem[0])+""+String(mensagem[1]);           //cria uma string com os valores contidos em mesagem[1] e mensagem[2] **esta no formato 09(dois caracteres)
+      id_equipe = String(mensagem[0])+""+String(mensagem[1]); //cria uma string com os valores contidos em mesagem[1] e mensagem[2] **esta no formato 09(dois caracteres)
       }
 
-void percursoFake()                                                     //Função que gera um percurso FAKE (apenas para testes temporariamente)
+void percursoFake()                                           //Função que gera um percurso FAKE (apenas para testes temporariamente)
  {
 
    int vel = 100; //Define de quanto em quanto o loop irá avançar até atingir o valor limite definido no while
@@ -157,20 +157,20 @@ void percursoFake()                                                     //Funç�
     {
      pausa = millis() + 10000;
      LO -= vel ;
-     tensaoBat();                                                      //Chama a função que irá obter a tensão da bateria
-     dados = "[08,-26.242370,-48.64"+(String)LO+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
+     tensaoBat();         //Chama a função que irá obter a tensão da bateria
+     //dados = "[08,-26.242370,-48.64"+(String)LO+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
      //dados = "[09,-26.242370,-48.64"+(String)LO+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*"; //Para cada equipe, substituir de acordo, para que os módulos não enviem informações idênticas
-     //dados = "[10,-26.242370,-48.64"+(String)LO+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
+     dados = "[10,-26.242370,-48.64"+(String)LO+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
      Serial.println(dados);
              
      while (pausa > millis()){
         receber();
-        //if (id_equipe == "10" ){
+        if (id_equipe == "10" ){
         //if (id_equipe == "09"){
-        if (id_equipe == "08"){
+        //if (id_equipe == "08"){
           serialLORA.listen();
           serialLORA.print(dados);
-          serialLORA.print(mensagemrecebida);
+          //serialLORA.print(mensagemrecebida);
           break;
           }
         }
@@ -182,16 +182,16 @@ void percursoFake()                                                     //Funç�
      LO = 1880;
      NS += vel;
      tensaoBat();         //Chama a função que irá obter a tensão da bateria
-     dados = "[08,-26.24"+(String)NS+",-48.641880"+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
+     //dados = "[08,-26.24"+(String)NS+",-48.641880"+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
      //dados = "[09,-26.24"+(String)NS+",-48.641880"+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
-     //dados = "[10,-26.24"+(String)NS+",-48.641880"+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
+     dados = "[10,-26.24"+(String)NS+",-48.641880"+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
      Serial.println(dados);
      
      while (pausa > millis()){
         receber();
-        //if (id_equipe == "10" ){
+        if (id_equipe == "10" ){
         //if (id_equipe == "09"){
-        if (id_equipe == "08"){
+        //if (id_equipe == "08"){
           serialLORA.listen();
           serialLORA.print(dados);
           break;
@@ -204,17 +204,17 @@ void percursoFake()                                                     //Funç�
       pausa = millis() + 3000;
      NS = 5150;
      LO += vel;
-     tensaoBat();         
-     dados = "[08,-26.245150,-48.64"+(String)LO+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
+     tensaoBat();         //Chama a função que irá obter a tensão da bateria
+     //dados = "[08,-26.245150,-48.64"+(String)LO+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
      //dados = "[09,-26.245150,-48.64"+(String)LO+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
-     //dados = "[10,-26.245150,-48.64"+(String)LO+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
+     dados = "[10,-26.245150,-48.64"+(String)LO+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
      Serial.println(dados);
      
      while (pausa > millis()){
         receber();
-        //if (id_equipe == "10" ){
+        if (id_equipe == "10" ){
         //if (id_equipe == "09"){
-        if (id_equipe == "08"){
+        //if (id_equipe == "08"){
           serialLORA.listen();
           serialLORA.print(dados);
           break;
@@ -226,18 +226,18 @@ void percursoFake()                                                     //Funç�
     {
       pausa = millis() + 3000;
      NS -= vel;
-      tensaoBat();         
-     dados = "[08,-26.24"+(String)NS+",-48.644660"+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
+      tensaoBat();         //Chama a função que irá obter a tensão da bateria
+     //dados = "[08,-26.24"+(String)NS+",-48.644660"+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
      //dados = "[09,-26.24"+(String)NS+",-48.644660"+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
-     //dados = "[10,-26.24"+(String)NS+",-48.644660"+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
+     dados = "[10,-26.24"+(String)NS+",-48.644660"+","+"2806,1821,0.1,"+String(tensaoA2,1)+"]*";
      Serial.println(dados);
 
      while (pausa > millis()){
         receber();
         
-        //if (id_equipe == "10"){
+        if (id_equipe == "10"){
         //if (id_equipe == "09"){
-        if (id_equipe == "08"){
+        //if (id_equipe == "08"){
           serialLORA.listen();
           serialLORA.print(dados);
           break;
