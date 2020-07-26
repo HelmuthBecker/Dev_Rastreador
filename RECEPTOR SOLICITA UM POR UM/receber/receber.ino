@@ -9,9 +9,9 @@
  Pinos Utilizados pela Shield Ethernet                   SoftSerial (Saídas Digitais)       Objeto EBYTE (Saídas Digitais)    LEDs Indicativos
   ** MOSI - pin 11                                                                           ** 7,5,2 - M0, M1, AUX           ** A2 - LED Equipe 10
   ** MISO - pin 12                                        ** 3,6 -  Rx, Tx (LORA)                                             ** A1 - LED Equipe 09
-  ** CLK - pin 13                                                                                                             ** A0 - LED Equipe 08
-  ** CS - pin 10
-  ** SD - pin 4
+  ** CLK  - pin 13                                                                                                            ** A0 - LED Equipe 08
+  ** CS   - pin 10
+  ** SD   - pin 4
   
  */
 
@@ -22,9 +22,12 @@
 #include <EBYTE.h>
 #include <SoftwareSerial.h>
 
-byte mac[]    = {  0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x02 };  // Ethernet shield (W5100) MAC address
-byte ip[] = { 192, 168, 3, 1 };                          // Ethernet shield (W5100) IP address
-byte server[] = {192,168,3,2};
+byte equipes[] = {8,10,33};                               // ID's das equipes que estão competindo na prova
+byte indice;                                              // Quantidade de equipes
+
+byte mac[]    = {  0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x02 };      // Ethernet shield (W5100) MAC address
+byte ip[]     = { 192, 168, 1, 49 };                           // Ethernet shield (W5100) IP address
+byte server[] = { 192, 168, 1, 103 };                           // IP do servidor MQTT
 
 File myFile;                             //Objeto File
 
@@ -37,8 +40,8 @@ char mensagem[45];                       //mensagem contendo os dados recebidos 
 #define LED9 A1                          //LED equipe 9 na porta A1
 #define LED10 A2                         //LED equipe 10 na porta A2
 
-SoftwareSerial mySerial(3,6);           //Software serial do módulo LORA (3-Rx - 6-Tx)
-EBYTE emissor(&mySerial, 7, 5, 2);      // Objeto Ebyte
+SoftwareSerial mySerial(7,3);           //Software serial do módulo LORA (3-Rx - 6-Tx)
+EBYTE emissor(&mySerial, 6, 5, 2);      // Objeto Ebyte
 
 EthernetClient ethClient;               
 PubSubClient client(ethClient);         //Objeto PubSubClient
@@ -59,6 +62,7 @@ mySerial.begin(9600);              //Inicia Serial Lógica
 client.setServer(server, 1883);    //Inicia e define IP e porta do servidor MQTT
 
 iniciar_LORA();                    //Inicia o módulo LORA com os parâmetros definidos na função iniciar_LORA
+delay(500);
 conectar_MQTT();                   //Conecta ao broker MQTT
 iniciar_SD();                      //Inicia o módulo SD
 
@@ -67,10 +71,10 @@ iniciar_SD();                      //Inicia o módulo SD
 void loop() {
 
       solicitar();                //Solicita dados aos módulos transmissores
-
+      
 }   //Fim loop
 
-void iniciar_LORA ()              //Função que define os parâmetros de configuração do módulo LORA
+void iniciar_LORA () 
   {
      mySerial.listen();                   
        
@@ -84,7 +88,7 @@ void iniciar_LORA ()              //Função que define os parâmetros de config
      emissor.SetChannel(23);                                    //Canal 23 (Pode variar de 0 até 32)
      emissor.SetParityBit(PB_8N1);                              //Bit Paridade 8N1
      emissor.SetTransmitPower(OPT_TP30);                        //Força de transmissão 30db (Para módulos de 1W/8km)
-     //emissor.SetTransmitPower(OPT_TP20);                        //Força de transmissão 20db (Para módulos 100mW/3km)
+     //emissor.SetTransmitPower(OPT_TP20);                      //Força de transmissão 20db (Para módulos 100mW/3km)
      emissor.SetWORTIming(OPT_WAKEUP250);                       //WakeUP Time(?) 2000
      emissor.SetFECMode(OPT_FECENABLE);                         //FEC(?) ENABLE
      emissor.SetTransmissionMode(OPT_FMDISABLE);                //Transmission Mode (Fixed or Transparent)
@@ -92,9 +96,9 @@ void iniciar_LORA ()              //Função que define os parâmetros de config
      emissor.SaveParameters(PERMANENT);                         //Salva as modificações na memória do módulo
          
      emissor.PrintParameters();                                 //Exibe os parâmetros configurados
-    } //Fim iniciarLORA 
+  } //Fim iniciarLORA 
 
-void iniciar_SD(){                      //Função que inicia o módulo SD
+  void iniciar_SD(){                                             //Função que inicia o módulo SD
     while (!SD.begin(4)){
     Serial.println("ERRO SD"); 
      } //Serial.println("SD OK");
@@ -115,14 +119,6 @@ void conectar_MQTT(){                                           //Função que c
         Serial.println("FALHA MQTT");
         client.connect(ARDUINO_CLIENT_ID);
         delay(1000); // Aguarda 1 seg antes de tentar conectar novamente
-  
-        /* if (client.connect(ARDUINO_CLIENT_ID)){
-      
-          } else{
-           Serial.println("FALHA MQTT");
-           client.connect(ARDUINO_CLIENT_ID);
-           delay(1000); // Aguarda 1 seg antes de tentar conectar novamente
-          }*/
   }
 }  //Fim conectar_MQTT
 
@@ -133,29 +129,30 @@ void Receber(){                                              //Função que rece
    while (mySerial.available() > 0){                          
          bytesRecebidos = mySerial.readBytesUntil('*', mensagem, 44);    //Recebe dados do buffer até encontrar o caracter * que indica o fim da mensagem
          }
-        Publicar();                       //Aciona a função que irá publicar e salvar no SD os dados recebidos
+        Publicar();                               //Aciona a função que irá publicar e salvar no SD os dados recebidos
 }  //Fim Receber
 
-void solicitar(){                         //Função que solicita dados aos módulos
-  unsigned long pausa;
+void solicitar(){
+  unsigned long pausa;                    
+  indice = (sizeof(equipes));                     //Define quantas equipes estão competindo de acordo com o tamanho da var equipes
+    
+  for (byte a = 0; a < indice ; a++){             //Loop que a cada interação envia o numero da equipe como ID para solicitar informações aos módulos
+  pausa = millis() + 3000;                        //Define uma pausa de 3 seg para que o módulo aguarde resposta com dados do módulo solicitado
 
-  for (byte a = 8; a < 11 ; a++){         //Loop que a cada interação envia o numero da equipe como ID para solicitar informações aos módulos
-  pausa = millis() + 3000;                //Define uma pausa de 3 seg para que o módulo aguarde resposta com dados do módulo solicitado
-
- conectar_MQTT();                         //A cada iteração do loop verifica se a conexão com o MQTT está ativa
+ conectar_MQTT();                                 //A cada iteração do loop verifica se a conexão com o MQTT está ativa
   
-  if (a < 10){                            //Caso o numero da equipe seja menor que 10, adiciona um zero a esquerda como padronização e o char "*" de fim de mensagem
-    Serial.println("0"+(String)a+"*");    
-    mySerial.print("0"+(String)a+"*");
-    while (pausa > millis()){             //Após o envio da solicitação, aguarda 3s por uma respota
-    Receber();                            //Função que recebe os dados dos módulos
+  if (equipes[a] < 10){                           //Caso o numero da equipe seja menor que 10, adiciona um zero a esquerda como padronização e o char "*" de fim de mensagem
+    Serial.println("0"+(String)equipes[a]+"*");    
+    mySerial.print("0"+(String)equipes[a]+"*");
+    while (pausa > millis()){                     //Após o envio da solicitação, aguarda 3s por uma respota
+    Receber();                                    //Função que recebe os dados dos módulos
     }
   }
-  if (a >= 10){                          //Caso o numero da equipe seja maior que 10, não adiciona nada, apenas o char "*" de fim de mensagem
-    Serial.println((String)a+"*");
-    mySerial.print((String)a+"*");
-    while (pausa > millis()){             //Após o envio da solicitação, aguarda 3s por uma respota
-    Receber();                            //Função que recebe os dados dos módulos 
+  if (equipes[a] >= 10){                          //Caso o numero da equipe seja maior que 10, não adiciona nada, apenas o char "*" de fim de mensagem
+    Serial.println((String)equipes[a]+"*");
+    mySerial.print((String)equipes[a]+"*");
+    while (pausa > millis()){                     //Após o envio da solicitação, aguarda 3s por uma respota
+    Receber();                                    //Função que recebe os dados dos módulos 
     }
   }
  }
@@ -163,13 +160,15 @@ void solicitar(){                         //Função que solicita dados aos mód
 
 void Publicar(){                                                  //Função que publica os dados recebidos
       if(mensagem[0] == '[' && mensagem[43] == ']'){              //Verifica se a mensagem está completa
-      //if(mensagem[0] == '['){
-      
+            
       char id_equipe [3] = { mensagem[1], mensagem[2] };          //Retira da mensagem a ID da equipe
-      String topico_str = "/app/dados/equipe"+String(id_equipe);  //Cria o endereço do tópico MQTT onde serão publicados os dados
-      char topico_char[21];
-      topico_str.toCharArray(topico_char, 21);                    //Converte o endereço criado em CharArray
+      String topico_str = "/app/dados/equipe"+String(id_equipe);  //Cria o endereço do tópico MQTT onde serão publicados os dados Ex:. /app/dados/equipe07 ou /app/dados/equipe10
+      char topico_char[21];                                       //Vetor que irá armazenar o endereço do tópico em formato char
+      topico_str.toCharArray(topico_char, 21);                    //Converte o endereço criado em char e atribui ao vetor topico_char
 
+      //Serial.println(mensagem[1]);
+      //Serial.println(mensagem[2]);
+      //Serial.println(id_equipe);
       Serial.println(mensagem);                                   //Exibe a mensagem na serial (apenas para verificação e teste)
                                      
          client.beginPublish(topico_char,44,false);               //Inicia a publicação no MQTT
@@ -183,7 +182,7 @@ void Publicar(){                                                  //Função que
          digitalWrite(LED10, LOW); 
          }
 
-         if (String(id_equipe) == "09"){
+         if (String(id_equipe) == "33"){
          digitalWrite(LED9, HIGH);
          delay(500);
          digitalWrite(LED9, LOW); 
