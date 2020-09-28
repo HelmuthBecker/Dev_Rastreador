@@ -4,100 +4,154 @@
                               ***SUBSTITUIR O VALOR DO PARÂMETRO "SetTransmitPower" NA FUNÇÃO "INICIAR LORA" CONFORME NECESSÁRIO***
                           
                    SoftSerial (Saídas Digitais)      Objeto EBYTE (Saídas Digitais)    
-                   ** 3,2 -  RX,TX  (GPS)           ** 7, 8, 10 - M0, M1, AUX(Definido mas não conectado)          
+                   ** 12,11 -  RX,TX  (GPS)           ** 7, 8, 10 - M0, M1, AUX(Definido mas não conectado)          
                    ** 9,6 -  RX,TX (LORA)                                                
   
  */
-
+#include <TinyGPS.h>
 #include <EBYTE.h>
 #include <SoftwareSerial.h>
 
-#define DEBUG true
+#define AMOSTRAS 12             //Usado na função lePorta. Numero de vezes que a função irá ler o valor na porta A2, para tirar a média dos valores, para calculo de tensão na bateria.
 
-SoftwareSerial mySerial(9,6); //Rx - Tx (LORA)
+String id_modulo = "04";        //Define o id do módulo emissor (ou id da equipe) ---- Definir um Id diferente para cada módulo
+String tensaoBat;               //Usado na função tensaoBat. Variável que armazena o valor da tensão da bateria
 
-EBYTE emissor(&mySerial, 7, 8, 10); //Parâmetros do módulo LORA (RX,TX,M0,M1,AUX)
+size_t bytesRecebidos;
 
-void setup() {
-  
-Serial.begin(9600); //Inicia a serial física
-mySerial.begin(9600); //Inicia a serial lógica
+SoftwareSerial serialLORA(9,6);         //Rx - Tx (LORA)
+SoftwareSerial serialGPS(12,11);        //Rx - Tx (GPS)
 
-iniciarLORA(); //Função que passa os parâmetros de funcionamento do módulo LORA
-}
+EBYTE emissor(&serialLORA, 7, 8, 10);   //Parâmetros do módulo LORA (RX,TX,M0,M1,AUX)
+TinyGPS gps;                            //Objeto TinyGPS
 
-void loop() 
- {  
-             percursoFake(); //Função que gera um percurso FAKE (apenas para testes temporariamente)
- }
-
-
- void iniciarLORA () 
+void iniciarLORA () 
   {
-     mySerial.listen();                   
+     serialLORA.listen();                   
        
      emissor.init();                                            //Inicia o módulo
 
      emissor.SetMode(MODE_NORMAL);                              //Modo de funcionamento do módulo
-     emissor.SetAddressH(0);                                    //Endereço H(?)
-     emissor.SetAddressL(0);                                    //Endereço L(?)
+     emissor.SetAddressH(0);                                    //Endereço H(Não alterar)
+     emissor.SetAddressL(0);                                    //Endereço L(Alterar este valor para trocar o endereço do módulo)
      emissor.SetAirDataRate(ADR_2400);                          //AirDataRate 2400kbps
      emissor.SetUARTBaudRate(UDR_9600);                         //BAUDRate 9600
-     emissor.SetChannel(23);                                    //Canal 23
+     emissor.SetChannel(23);                                    //Canal 23 (Pode variar de 0 até 32)
      emissor.SetParityBit(PB_8N1);                              //Bit Paridade 8N1
-     //emissor.SetTransmitPower(OPT_TP30);                        //Força de transmissão 30db (Para módulos de 1W/8km definir como 30)
-     emissor.SetTransmitPower(OPT_TP20);                      //Força de transmissão 20db (Para módulos 100mW/3km definir como 20)
+     //emissor.SetTransmitPower(OPT_TP30);                        //Força de transmissão 30db (Para módulos de 1W/8km)
+     emissor.SetTransmitPower(OPT_TP20);                        //Força de transmissão 20db (Para módulos 100mW/3km)
      emissor.SetWORTIming(OPT_WAKEUP250);                       //WakeUP Time(?) 2000
      emissor.SetFECMode(OPT_FECENABLE);                         //FEC(?) ENABLE
-     emissor.SetTransmissionMode(OPT_FMDISABLE);                //Transmission Mode
+     emissor.SetTransmissionMode(OPT_FMDISABLE);                //Transmission Mode (Fixed or Transparent)
      emissor.SetPullupMode(OPT_IOPUSHPULL);                     //IO Mode PushPull
      emissor.SaveParameters(PERMANENT);                         //Salva as modificações na memória do módulo
          
      emissor.PrintParameters();                                 //Exibe os parâmetros configurados
   } //Fim iniciarLORA 
 
-  void percursoFake() //Função que gera um percurso FAKE (apenas para testes temporariamente)
- {
-
-   int vel = 100; //Define de quanto em quanto o loop irá avançar até atingir o valor limite definido no while
-   int LO = 4660; //Valores de longitude
-   int NS = 2370; //Valores de latitude
-
-   while (LO > 1880)
-    {
-     LO -= vel ;
-     //mySerial.print("[06,-26.242370,-48.64"+(String)LO+"]*"); //Para cada equipe, substituir de acordo, para que os módulos não enviem informações idênticas
-     //mySerial.print("[07,-26.242370,-48.64"+(String)LO+"]*");
-     mySerial.print("[08,-26.242370,-48.64"+(String)LO+"]*");
-     delay(random(1000, 1500));
-    }
-   
-   while (NS < 5150)
-    {
-     LO = 1880;
-     NS += vel;
-     //mySerial.print("[06,-26.24"+(String)NS+",-48.641880]*");
-     //mySerial.print("[07,-26.24"+(String)NS+",-48.641880]*");
-     mySerial.print("[08,-26.24"+(String)NS+",-48.641880]*");
-     delay(random(1000, 1500));
-    }
-    
-   while (LO < 4660)
-    {
-     NS = 5150;
-     LO += vel;
-     //mySerial.print("[06,-26.245150,-48.64"+(String)LO+"]*");
-     //mySerial.print("[07,-26.245150,-48.64"+(String)LO+"]*");
-     mySerial.print("[08,-26.245150,-48.64"+(String)LO+"]*");
-     delay(random(1000, 1500));
-    }
-    
-   while (NS > 2370)
-    {
-     NS -= vel;
-     //mySerial.print("[06,-26.24"+(String)NS+",-48.644660]*");
-     //mySerial.print("[07,-26.24"+(String)NS+",-48.644660]*");
-     mySerial.print("[08,-26.24"+(String)NS+",-48.644660]*");
-     delay(random(1000, 1500));
-    }
+float lePorta(uint8_t portaAnalogica) {                         //Função que lê o valor de tensão recebido na porta A2 
+  float total=0;  
+  for (int i=0; i<AMOSTRAS; i++) {
+    total += 1.0 * analogRead(portaAnalogica);
+    delay(5);
+  }
+  return total / (float)AMOSTRAS;                               //retorna o valor médio obtido das 12 leituras na porta A2
 }
+
+void tensaoBateria() {                                          //Função que calcula o valor de tensão da bateria, de acordo com o valor lido na porta A2
+
+float tensaoA2;
+float aRef=5;                                                   //Máximo valor de tensão aceito pela porta A2
+float relacaoA2=5.8;                                            //Fator para transformar o valor Vout recebido na porta A2, no valor de Vin (que entra antes do divisor de tensão) 
+  
+  tensaoA2 = ((lePorta(A2) * aRef) / 1024.0)* relacaoA2;        //Calculo de tensão
+
+  if (tensaoA2 <= 9.9){
+     tensaoBat = "0"+String(tensaoA2,1);                     //Adiciona zero a esquerda para tensões menores que 10, mantendo o valor padrão de 3 char(TT.T)
+     } if (tensaoA2 >= 10){
+      tensaoBat = String(tensaoA2,1);                           //Para horas maiores que 10, não adiciona nada, apenas passa o valor como string para outra variavel
+     }  
+}  
+
+void getGPS(){                                                  //Função que obtém os dados de GPS
+ 
+   serialGPS.listen();
+
+   bool recebido = false;
+   unsigned long idadeInfo,date,tempo;
+   float flat, flon;
+   String diaMes, horaMinSeg, dados, velocidade;
+ 
+     while (serialGPS.available()) {                             //Recebe os dados pela serial do GPS
+     char cIn = serialGPS.read();
+     recebido = gps.encode(cIn);
+   }
+  
+  if (recebido) {
+     gps.get_datetime(&date, &tempo, &idadeInfo);             //Obtem data e hora dos dados recebidos anteriormente
+     gps.f_get_position(&flat, &flon, &idadeInfo);            //Obtem latitude e longitude dos dados recebidos anteriormente
+
+     //tempo = ((tempo/10000)-300);                           //Converte o formato da hora de HHMMSSMS para HHMM
+     tempo = ((tempo/100)-30000);                               //Converte o formato da hora de HHMMSSMS para HHMMSS
+     date = (date/100);                                       //Converte o formato da data de DDMMAA para DDMM
+
+    if (gps.f_speed_knots() <= 9.9){
+        velocidade = "0"+String(gps.f_speed_knots(),1);       //Adiciona zero a esquerda para velocidades menores que 10, mantendo o valor padrão de 3 char(VV.V)
+     } if (gps.f_speed_knots() >= 10){
+        velocidade = String(gps.f_speed_knots(),1);           //Para velocidades maiores que 10, não adiciona nada, apenas passa o valor como string para outra variavel
+     }
+
+     if (tempo <= 99999){
+        horaMinSeg = "0"+String(tempo);                       //Adiciona zero a esquerda para horas menores que 10, mantendo o numero padrão de 4 char(HHMM)
+     } if (tempo >= 100000){
+        horaMinSeg = String(tempo);                           //Para horas maiores que 10, não adiciona nada, apenas passa o valor como string para outra variavel
+     }
+
+     if (date <= 999){              
+      diaMes = "0"+String(date);                              //Adiciona zero a esquerda para dias menores que 10, mantendo o numero padrão de 4 char (DDMM)
+     } else{
+      diaMes = String(date);                                  //Para dias maiores que 10, não adiciona nada, apenas passa o valor como string para outra variavel
+     }
+
+     tensaoBateria();                                         //Chama a função que irá obter a tensão da bateria
+
+     dados = "["+id_modulo+","+String(flat,6)+","+String(flon,6)+","+diaMes+","+horaMinSeg+","+velocidade+","+tensaoBat+"]*";        //Forma a string de dados que será enviada
+          
+          Serial.println(dados);                                  //Exibe os dados (apenas para fins de teste
+
+          serialLORA.listen();    
+          serialLORA.print(dados);                                //Transmite os dados ao receptor em terra
+          delay(500);
+     }
+}     
+  
+void dadosFake() {                                          //Função que gera dados FAKE (apenas para testes temporariamente)
+
+   tensaoBateria();         //Chama a função que irá obter a tensão da bateria
+   
+   String dados = "["+id_modulo+",-26.242370,-48.642423,2806,182100,00.1,"+tensaoBat+"]*";
+          
+   Serial.println(dados);
+                 
+          serialLORA.listen();
+          serialLORA.print(dados);
+          delay(1500);
+      }
+
+void setup() {
+  
+Serial.begin(9600);                     //Inicia a serial física
+Serial.println("Serial F. OK");
+serialLORA.begin(9600);                 //Inicia a serial LORA
+Serial.println("Serial L. OK");
+serialGPS.begin(9600);                  //Inicia a serial GPS
+Serial.println("Serial G. OK");
+delay(500);
+
+iniciarLORA();                          //Função que passa os parâmetros de funcionamento do módulo LORA
+}
+ 
+void loop() {             
+   //getGPS();                         //Função que obtem os dados do GPS
+   dadosFake();                   //Função que obtem os dados FAKES
+ }
