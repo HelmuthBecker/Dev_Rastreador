@@ -1,187 +1,159 @@
 /*
-//Pinos digitais utilizados - 2,3,4,5,6,7,8,9,10,11,12,13
+                                                         ********Pinos digitais utilizados - 2,3,4,5,6,7,10,11,12,13***********
+                                                               *******Pinos analogicos utilizados - A0, A1, A2 **********
 
                                     **************SKETCH PARA MÓDULOS DE 1W/8km "EBYTE E32 433T30D" E 100mW/3km "EBYTE E32 433T20D"**************
                                         ***SUBSTITUIR O VALOR DO PARÂMETRO "SetTransmitPower" NA FUNÇÃO "INICIAR LORA" CONFORME NECESSÁRIO***
                                           ******O USO DE LEDS É APENAS PARA FINS DE TESTES TEMPORÁRIOS, A VERSÃO FINAL NÃO TERÁ LEDS******
  
- Pinos Utilizados pela Shield Ethernet                   SoftSerial (Saídas Digitais)       Objeto EBYTE (Saídas Digitais)    LEDs Indicativos
-  ** MOSI - pin 11                                       						                        ** 5, 4, 2 - M0, M1, AUX          ** 9 - LED Equipe 6
-  ** MISO - pin 12                                        ** 3,6 -  Rx, Tx (LORA)                                             ** 8 - LED Equipe 8
-  ** CLK - pin 13                                                                                                             ** 7 - LED Equipe 7
-  ** CS - pin 10
+ Pinos Utilizados pela Shield Ethernet                   SoftSerial (Saídas Digitais)       Objeto EBYTE (Saídas Digitais)    
+  ** MOSI - pin 11                                                                          ** 6,5,2 - M0, M1, AUX            
+  ** MISO - pin 12                                       ** 7,3 -  Rx, Tx (LORA)                                              
+  ** CLK  - pin 13                                                                                                            
+  ** CS   - pin 10
+  ** SD   - pin 4
   
  */
 
 #include <SPI.h>
 #include <Ethernet.h>
 #include <PubSubClient.h>
+#include <SdFat.h>
 #include <EBYTE.h>
 #include <SoftwareSerial.h>
 
-#define ARDUINO_CLIENT_ID "ARDUINO"           // Client ID for Arduino pub/sub
-#define PUB_6 "/app/dados/equipe6"            // Tópico MQTT para equipe 6
-#define PUB_7 "/app/dados/equipe7"   					// Tópico MQTT para equipe 7
-#define PUB_8 "/app/dados/equipe8"   					// Tópico MQTT para equipe 8
+byte mac[]    = { 0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x02 };       // Ethernet shield (W5100) MAC address
+byte ip[]     = { 192, 168, 1, 49  };                          // Ethernet shield (W5100) IP address
+byte server[] = { 192, 168, 1, 156 };                         // IP do servidor MQTT
 
-#define LED1 9
-#define LED2 8
-#define LED3 7
-
-char mensagem[25];  //Array de caracteres que irá armazenar a mensagem a ser recebida
+SdFat SD;
+File myFile;                             //Objeto File do SD
 size_t bytesRecebidos;
 
-SoftwareSerial mySerial(3,6); 				        //Rx - Tx
+char mensagem[148];                      //mensagem contendo os dados recebidos dos módulos transmissores
 
-EBYTE emissor(&mySerial, 5, 4, 2);
+#define ARDUINO_CLIENT_ID "ARDUINO"      //ID do cliente para publicação no broker MQTT
+#define LED8 A0                          //LED status MQTT na porta A0
+#define LED9 A1                          //LED status SD na porta A1
 
-// Networking details
-byte mac[]    = {  0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x02 };  // Ethernet shield (W5100) MAC address
-IPAddress ip(192, 168, 3, 105);                           // Ethernet shield (W5100) IP address
-IPAddress server(192, 168, 3, 114);                       // MTTQ server IP address
+SoftwareSerial serialLORA(7,3);          //Software serial do módulo LORA (7-Rx - 3-Tx)
+EBYTE emissor(&serialLORA, 6, 5, 2);     //Objeto Ebyte
 
-EthernetClient ethClient;
-PubSubClient client(ethClient);
- 
+EthernetClient ethClient;               
+PubSubClient client(ethClient);          //Objeto PubSubClient
 
 void setup() {
 
-	 pinMode(LED1, OUTPUT);
-	 pinMode(LED2, OUTPUT);
-   pinMode(LED3, OUTPUT);
+iniciar_SD();
+Ethernet.begin(mac, ip);                 //Inicia o Ethernet shield
+Serial.begin(9600);                      //Inicia Serial Fisíca
+serialLORA.begin(9600);                  //Inicia Serial Lógica
+client.setServer(server, 1883);          //Inicia e define IP e porta do servidor MQTT
 
-	 Serial.begin(9600); //Inicia a serial física
-	 mySerial.begin(9600); //Inicia a serial lógica
+Serial.println("Rede e Seriais OK");
 
-  	 
-  	 client.setServer(server, 1883);  // Endereço IP e porta do servidor MQTT
- 
-  	 
-  	 Ethernet.begin(mac, ip); // Inicia o Ethernet shield
+pinMode(LED8, OUTPUT);                 
+pinMode(LED9, OUTPUT);
 
-	 iniciarLORA();
+digitalWrite(LED8, LOW);
+digitalWrite(LED9, LOW);
+
+Serial.println("LED OK");
+
+iniciar_LORA();                    //Inicia o módulo LORA com os parâmetros definidos na função iniciar_LORA
+delay(500);
+conectar_MQTT();                   //Conecta ao broker MQTT
+digitalWrite(LED8, LOW);
+iniciar_SD();                      //Inicia o módulo SD
+digitalWrite(LED9, LOW);
+
+Serial.println("LORA, SD, MQTT OK");
 }
 
-void loop()  
-	{
- 	 /*if (!client.connected())
-     	{
-     	 reconectar();
-    	} */
- 
-     receberEnviar();
-     delay (1000);  
-	}
-
-void iniciarLORA ()   //Função que define os parâmetros de configuração do módulo LORA
-	{
-     mySerial.listen();                   
+void iniciar_LORA (){
+     serialLORA.listen();                   
        
      emissor.init();                                            //Inicia o módulo
 
      emissor.SetMode(MODE_NORMAL);                              //Modo de funcionamento do módulo
-     emissor.SetAddressH(0);                                    //Endereço H(?)
-     emissor.SetAddressL(0);                                    //Endereço L(?)
+     emissor.SetAddressH(0);                                    //Endereço H(Não alterar)
+     emissor.SetAddressL(0);                                    //Endereço L(Alterar este valor para trocar o endereço do módulo)
      emissor.SetAirDataRate(ADR_2400);                          //AirDataRate 2400kbps
      emissor.SetUARTBaudRate(UDR_9600);                         //BAUDRate 9600
-     emissor.SetChannel(23);                                    //Canal 23
+     emissor.SetChannel(23);                                    //Canal 23 (Pode variar de 0 até 32)
      emissor.SetParityBit(PB_8N1);                              //Bit Paridade 8N1
      emissor.SetTransmitPower(OPT_TP30);                        //Força de transmissão 30db (Para módulos de 1W/8km)
-     //emissor.SetTransmitPower(OPT_TP20);                        //Força de transmissão 20db (Para módulos 100mW/3km)
-     emissor.SetWORTIming(OPT_WAKEUP250);                      //WakeUP Time(?) 2000
+     //emissor.SetTransmitPower(OPT_TP20);                      //Força de transmissão 20db (Para módulos 100mW/3km)
+     emissor.SetWORTIming(OPT_WAKEUP250);                       //WakeUP Time(?) 2000
      emissor.SetFECMode(OPT_FECENABLE);                         //FEC(?) ENABLE
-     emissor.SetTransmissionMode(OPT_FMDISABLE);                //Transmission Mode
+     emissor.SetTransmissionMode(OPT_FMDISABLE);                //Transmission Mode (Fixed or Transparent)
      emissor.SetPullupMode(OPT_IOPUSHPULL);                     //IO Mode PushPull
      emissor.SaveParameters(PERMANENT);                         //Salva as modificações na memória do módulo
          
      emissor.PrintParameters();                                 //Exibe os parâmetros configurados
-  	} //Fim iniciarLORA 
+  } //Fim iniciarLORA 
 
-void reconectar()
-	{
-  	 // Loop até reconectar
-  	 while (!client.connected()) 
-  	 	{
-     	 Serial.print("Attempting MQTT connection ... ");
+  void iniciar_SD(){                                            //Função que inicia o módulo SD
+   
+    while (!SD.begin(4)){
+    Serial.println("ERRO SD");
+    digitalWrite(LED9, HIGH);
+    delay(1000);
+   }
+  
+}// Fim iniciar_SD
 
-    	 // Attempt to connect
-    	 if (client.connect(ARDUINO_CLIENT_ID)) 
-    	 	{
-      		 Serial.println("connected");
-       		} 
-    	 else 
-    		{
-      		 Serial.print("Connection failed, state: ");
-      		 Serial.print(client.state());
-      		 Serial.println(", retrying in 3 seconds");
-      		 delay(3000); // Aguarda 3 seg antes de tentar conectar novamente
-    		}
-  		}
-	}
+void salvar_SD() {                                          //Função que salva os dados recebidos no cartão SD
+    myFile = SD.open("log.txt", FILE_WRITE);                //Abre o arquivo para edição
+    if(myFile){
+      myFile.println(mensagem);                            //Edita o arquivo com os dados recebidos
+       myFile.close();                                      //Fecha o arquivo após a edição
+       Serial.println("Salvo SD");                          //Exibe mensagem de confirmação de edição concluida
+       return;
+      } 
+    else {
+      Serial.println("ERRO SALVAR SD");
+      return;
+    }
+} //Fim salva_SD
 
-void receberEnviar()
-	{
-  //Limpa a variavel mensagem, antes do uso
-     for (byte a = 0; a < 26; a++ )
-     	{
-         mensagem[a] = "";
-    	}
-     
-     //Recebe dados do buffer até encontrar o caracter * que indica o fim da mensagem          
-     while (mySerial.available() > 0)
-     	{
-       	 bytesRecebidos = mySerial.readBytesUntil('*', mensagem, 26);
-      	}
-       
-  //Analisa a mensagem recebida e publica no tópico de acordo com a ID da equipe (a ID da equipe está na posição 2 do array mensagem)   
-     switch (mensagem[2])
-     	{
-        case '6':
-         client.beginPublish (PUB_6, 26, false); //Inicia a publicação no MQTT
-         client.print(mensagem); //Publica a mensagem
-         client.endPublish(); //Encerra a publicação no MQTT
-         Serial.println(mensagem); //Exibe a mensagem na serial (apenas para verificação e teste)
-         mySerial.print("STOP*");
-         digitalWrite(LED1, HIGH);
-         delay(500);
-         digitalWrite(LED1, LOW);
-         delay(500);
-         digitalWrite(LED1, HIGH);
-         delay(500);
-         digitalWrite(LED1, LOW);
-         break;
-        
-         case '7':
-         client.beginPublish (PUB_7, 26, false);
-         client.print(mensagem);
-         client.endPublish();
-         Serial.println(mensagem);
-         mySerial.print("STOP*");
-         digitalWrite(LED2, HIGH);
-         delay(500);
-         digitalWrite(LED2, LOW);
-         delay(500);
-         digitalWrite(LED2, HIGH);
-         delay(500);
-         digitalWrite(LED2, LOW);
-         break;
-     
-       	 case '8':
-         client.beginPublish (PUB_8, 26, false);
-         client.print(mensagem);
-         client.endPublish();
-         Serial.println(mensagem);
-         mySerial.print("STOP*");
-         digitalWrite(LED3, HIGH);
-         delay(500);
-         digitalWrite(LED3, LOW);
-         delay(500);
-         digitalWrite(LED3, HIGH);
-         delay(500);
-         digitalWrite(LED3, LOW);
-         break;
-           
-         default:
-         return;
-      	}
-  	}
+void conectar_MQTT(){                                          //Função que conecta ao MQTT
+  while (!client.connect(ARDUINO_CLIENT_ID)){                   
+        Serial.println("FALHA MQTT");
+        digitalWrite(LED8, HIGH);
+        client.connect(ARDUINO_CLIENT_ID);
+        delay(1000);                                           // Aguarda 1 seg antes de tentar conectar novamente
+  }
+}  //Fim conectar_MQTT
+
+void Receber(){                                              //Função que recebe os dados dos módulos
+    for (unsigned int a = 0; a < 147; a++ ){                           //Limpa a variavel mensagem, antes do uso
+     mensagem[a] = '0';
+     }
+    serialLORA.listen();
+    while (serialLORA.available() > 0){                          
+         bytesRecebidos = serialLORA.readBytesUntil('@', mensagem, 147);    //Recebe dados do buffer até encontrar o caracter * que indica o fim da mensagem
+        }
+}       //Fim Receber
+
+void Publicar(){                                                   //Função que publica os dados recebidos
+      String topico_str = "/app1/dados/equipe00";                  //Cria o endereço do tópico MQTT onde serão publicados os dados Ex:. /app/dados/equipe07 ou /app/dados/equipe10
+      char topico_char[21];                                        //Vetor que irá armazenar o endereço do tópico em formato char
+      topico_str.toCharArray(topico_char, 21);                     //Converte o endereço criado em char e atribui ao vetor topico_char
+
+        if(mensagem[0] == '['){
+        Serial.println(mensagem);
+        salvar_SD();
+                                                    
+         client.beginPublish(topico_char,147,false);                //Inicia a publicação no MQTT
+         client.print(mensagem);                                   //Publica a mensagem
+         client.endPublish();                                      //Encerra a publicação no MQTT
+       }
+}
+
+    void loop() {
+      Receber();  //Solicita dados aos módulos transmissores
+      Publicar();
+      conectar_MQTT();
+      //iniciar_SD;
+}   //Fim loop
