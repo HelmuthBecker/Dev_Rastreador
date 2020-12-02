@@ -6,10 +6,10 @@
                                         ***SUBSTITUIR O VALOR DO PARÂMETRO "SetTransmitPower" NA FUNÇÃO "INICIAR LORA" CONFORME NECESSÁRIO***
                                           ******O USO DE LEDS É APENAS PARA FINS DE TESTES TEMPORÁRIOS, A VERSÃO FINAL NÃO TERÁ LEDS******
  
- Pinos Utilizados pela Shield Ethernet                   SoftSerial (Saídas Digitais)       Objeto EBYTE (Saídas Digitais)    
-  ** MOSI - pin 11                                                                          ** 6,5,2 - M0, M1, AUX            
-  ** MISO - pin 12                                       ** 7,3 -  Rx, Tx (LORA)                                              
-  ** CLK  - pin 13                                                                                                            
+ Pinos Utilizados pela Shield Ethernet                   SoftSerial (Saídas Digitais)                     Objeto EBYTE (Saídas Digitais)    
+  ** MOSI - pin 11                                                                                        ** 6,5,2 - M0, M1, AUX            
+  ** MISO - pin 12                                       ** 7,3 -  Rx, Tx (LORA) (ARDUINO UNO)                                              
+  ** CLK  - pin 13                                       ** 12,3 - Rx, Tx (LORA) (ARDUINO MEGA)                                                                     
   ** CS   - pin 10
   ** SD   - pin 4
   
@@ -30,24 +30,26 @@ SdFat SD;
 File myFile;                             //Objeto File do SD
 size_t bytesRecebidos;
 
-char mensagem[148];                      //mensagem contendo os dados recebidos dos módulos transmissores
+//char mensagem[148];                      //mensagem contendo os dados recebidos dos módulos transmissores
+char mensagem [491];
 
 #define ARDUINO_CLIENT_ID "ARDUINO"      //ID do cliente para publicação no broker MQTT
 #define LED8 A0                          //LED status MQTT na porta A0
 #define LED9 A1                          //LED status SD na porta A1
 
-SoftwareSerial serialLORA(7,3);          //Software serial do módulo LORA (7-Rx - 3-Tx)
+SoftwareSerial serialLORA(12,3);          //Software serial do módulo LORA (7-Rx - 3-Tx)
 EBYTE emissor(&serialLORA, 6, 5, 2);     //Objeto Ebyte
 
 EthernetClient ethClient;               
 PubSubClient client(ethClient);          //Objeto PubSubClient
 
 void setup() {
-
-iniciar_SD();
-Ethernet.begin(mac, ip);                 //Inicia o Ethernet shield
+  
 Serial.begin(9600);                      //Inicia Serial Fisíca
 serialLORA.begin(9600);                  //Inicia Serial Lógica
+iniciar_SD();
+Ethernet.init(10);
+Ethernet.begin(mac, ip);                 //Inicia o Ethernet shield
 client.setServer(server, 1883);          //Inicia e define IP e porta do servidor MQTT
 
 Serial.println("Rede e Seriais OK");
@@ -62,7 +64,7 @@ Serial.println("LED OK");
 
 iniciar_LORA();                    //Inicia o módulo LORA com os parâmetros definidos na função iniciar_LORA
 delay(500);
-conectar_MQTT();                   //Conecta ao broker MQTT
+//conectar_MQTT();                   //Conecta ao broker MQTT
 digitalWrite(LED8, LOW);
 iniciar_SD();                      //Inicia o módulo SD
 digitalWrite(LED9, LOW);
@@ -127,12 +129,12 @@ void conectar_MQTT(){                                          //Função que co
 }  //Fim conectar_MQTT
 
 void Receber(){                                              //Função que recebe os dados dos módulos
-    for (unsigned int a = 0; a < 147; a++ ){                           //Limpa a variavel mensagem, antes do uso
+    for (unsigned int a = 0; a < 490; a++ ){                           //Limpa a variavel mensagem, antes do uso
      mensagem[a] = '0';
      }
     serialLORA.listen();
     while (serialLORA.available() > 0){                          
-         bytesRecebidos = serialLORA.readBytesUntil('@', mensagem, 147);    //Recebe dados do buffer até encontrar o caracter * que indica o fim da mensagem
+         bytesRecebidos = serialLORA.readBytesUntil('@', mensagem, 490);    //Recebe dados no buffer até encontrar o caracter * que indica o fim da mensagem
         }
 }       //Fim Receber
 
@@ -145,7 +147,7 @@ void Publicar(){                                                   //Função qu
         Serial.println(mensagem);
         salvar_SD();
                                                     
-         client.beginPublish(topico_char,147,false);                //Inicia a publicação no MQTT
+         client.beginPublish(topico_char,490,false);                //Inicia a publicação no MQTT
          client.print(mensagem);                                   //Publica a mensagem
          client.endPublish();                                      //Encerra a publicação no MQTT
        }
@@ -154,6 +156,8 @@ void Publicar(){                                                   //Função qu
     void loop() {
       Receber();  //Solicita dados aos módulos transmissores
       Publicar();
-      conectar_MQTT();
-      //iniciar_SD;
+      //conectar_MQTT();
+      digitalWrite(LED8, LOW);
+      iniciar_SD();
+      digitalWrite(LED9, LOW);
 }   //Fim loop

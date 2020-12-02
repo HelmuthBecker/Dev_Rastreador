@@ -12,15 +12,15 @@
 #include <EBYTE.h>
 #include <SoftwareSerial.h>
 
-#define AMOSTRAS 12             //Usado na função lePorta. Numero de vezes que a função irá ler o valor na porta A2, para tirar a média dos valores, para calculo de tensão na bateria.
+#define AMOSTRAS 15             //Usado na função lePorta. Numero de vezes que a função irá ler o valor na porta A2, para tirar a média dos valores, para calculo de tensão na bateria.
 
-String id_modulo = "04";        //Define o id do módulo emissor (ou id da equipe) ---- Definir um Id diferente para cada módulo
+String id_modulo = "02";        //Define o id do módulo emissor (ou id da equipe) ---- Definir um Id diferente para cada módulo
 String tensaoBat;               //Usado na função tensaoBat. Variável que armazena o valor da tensão da bateria
 
 size_t bytesRecebidos;
 
 SoftwareSerial serialLORA(9,6);         //Rx - Tx (LORA)
-SoftwareSerial serialGPS(12,11);        //Rx - Tx (GPS)
+SoftwareSerial serialGPS(11,12);        //Rx - Tx (GPS)
 
 EBYTE emissor(&serialLORA, 7, 8, 10);   //Parâmetros do módulo LORA (RX,TX,M0,M1,AUX)
 TinyGPS gps;                            //Objeto TinyGPS
@@ -62,8 +62,8 @@ void tensaoBateria() {                                          //Função que c
 
 float tensaoA2;
 float aRef=5;                                                   //Máximo valor de tensão aceito pela porta A2
-float relacaoA2=5.8;                                            //Fator para transformar o valor Vout recebido na porta A2, no valor de Vin (que entra antes do divisor de tensão) 
-  
+//float relacaoA2=2.2;                                            //Power Bank Fator para transformar o valor Vout recebido na porta A2, no valor de Vin (que entra antes do divisor de tensão) 
+  float relacaoA2=2.7;                                          //Bateria 9V
   tensaoA2 = ((lePorta(A2) * aRef) / 1024.0)* relacaoA2;        //Calculo de tensão
 
   if (tensaoA2 <= 9.9){
@@ -121,7 +121,7 @@ void getGPS(){                                                  //Função que o
 
           serialLORA.listen();    
           serialLORA.print(dados);                                //Transmite os dados ao receptor em terra
-          delay(500);
+          delay(1000);
      }
 }     
   
@@ -154,4 +154,5 @@ iniciarLORA();                          //Função que passa os parâmetros de f
 void loop() {             
    //getGPS();                         //Função que obtem os dados do GPS
    dadosFake();                   //Função que obtem os dados FAKES
+   //delay(3000);
  }
