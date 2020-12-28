@@ -35,40 +35,45 @@ size_t bytesRecebidos;
 
 char mensagem[49];                       //mensagem contendo os dados recebidos dos módulos transmissores
 
-#define ARDUINO_CLIENT_ID "ARDUINO"      //ID do cliente para publicação no broker MQTT
-#define LED8 A0                          //LED de status MQTT na porta A0
-#define LED9 A1                          //LED de status SD na porta A1
+#define ARDUINO_CLIENT_ID "ARDUINO"       //ID do cliente para publicação no broker MQTT
+#define LED8  A0                          //LED de status MQTT na porta A0
+#define LED9  A1                          //LED de status SD na porta A1
+#define LED10 A3                          //LED de status POWER            
 
-SoftwareSerial mySerial(7,3);           //Software serial do módulo LORA (7-Rx - 3-Tx)
-EBYTE emissor(&mySerial, 6, 5, 2);      //Objeto Ebyte
+SoftwareSerial mySerial(7,3);             //Software serial do módulo LORA (7-Rx - 3-Tx)
+EBYTE emissor(&mySerial, 6, 5, 2);        //Objeto Ebyte
 
 EthernetClient ethClient;               
-PubSubClient client(ethClient);         //Objeto PubSubClient
+PubSubClient client(ethClient);           //Objeto PubSubClient
 
 void setup() {
 
-Ethernet.begin(mac, ip);                //Inicia o Ethernet shield
-Serial.begin(9600);                     //Inicia Serial Fisíca
-SD.begin(4);
-mySerial.begin(9600);                   //Inicia Serial Lógica
-client.setServer(server, 1883);         //Inicia e define IP e porta do servidor MQTT
+Serial.begin(9600);                      //Inicia Serial Fisíca
+mySerial.begin(9600);                    //Inicia Serial Lógica
 
 Serial.println("Rede e Seriais OK");
 
-pinMode(LED8, OUTPUT);                 
-pinMode(LED9, OUTPUT);
+pinMode(LED8,  OUTPUT);                 
+pinMode(LED9,  OUTPUT);
+pinMode(LED10, OUTPUT);
 
-digitalWrite(LED8, LOW);
-digitalWrite(LED9, LOW);
+digitalWrite(LED8,  HIGH);
+digitalWrite(LED9,  HIGH);
+digitalWrite(LED10, HIGH);
 
 Serial.println("LED OK");
 
 iniciar_LORA();                    //Inicia o módulo LORA com os parâmetros definidos na função iniciar_LORA
 delay(500);
-conectar_MQTT();                   //Conecta ao broker MQTT
-digitalWrite(LED8, LOW);
+
 iniciar_SD();                      //Inicia o módulo SD
 digitalWrite(LED9, LOW);
+
+Ethernet.init(10);
+client.setServer(server, 1883);    //Inicia e define IP e porta do servidor MQTT
+Ethernet.begin(mac, ip);           //Inicia o Ethernet shield
+conectar_MQTT();                   //Conecta ao broker MQTT
+digitalWrite(LED8, LOW);
 
 Serial.println("");
 Serial.println("LORA, SD, MQTT OK");
@@ -113,10 +118,7 @@ void salvar_SD(char id_equipe[3]) {                            //Função que sa
        myFile.println(mensagem);                               //Edita o arquivo com os dados recebidos
        myFile.close();                                         //Fecha o arquivo após a edição
        Serial.println("Salvo SD");                            //Exibe mensagem de confirmação de edição concluida
-       //digitalWrite(LED9, HIGH);
-       //delay(500);
-       //digitalWrite(LED9, LOW);   
-    }
+       }
 } //Fim salva_SD
 
 void conectar_MQTT(){                                          //Função que conecta ao MQTT
@@ -144,7 +146,7 @@ void solicitar(){
   indice = (sizeof(equipes));                     //Define quantas equipes estão competindo de acordo com o tamanho da var equipes
     
   for (byte a = 0; a < indice ; a++){             //Loop que a cada interação envia o numero da equipe como ID para solicitar informações aos módulos
-  pausa = millis() + 3000;                        //Define uma pausa de 3 seg para que o módulo aguarde resposta com dados do módulo solicitado
+  pausa = millis() + 2000;                        //Define uma pausa de 3 seg para que o módulo aguarde resposta com dados do módulo solicitado
 
  conectar_MQTT();                                 //A cada iteração do loop verifica se a conexão com o MQTT está ativa
  digitalWrite(LED8, LOW);

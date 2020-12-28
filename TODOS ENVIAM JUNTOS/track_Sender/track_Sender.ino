@@ -153,6 +153,6 @@ iniciarLORA();                          //Função que passa os parâmetros de f
  
 void loop() {             
    //getGPS();                         //Função que obtem os dados do GPS
-   dadosFake();                   //Função que obtem os dados FAKES
+   dadosFake();                        //Função que obtem os dados FAKES
    //delay(3000);
  }

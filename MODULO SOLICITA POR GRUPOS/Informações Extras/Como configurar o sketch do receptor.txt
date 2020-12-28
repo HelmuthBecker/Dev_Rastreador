@@ -1,0 +1,24 @@
+Como configurar os módulos:
+
+Receptor:
+
+1- Na linha 23 preencher o vetor mac com o endereço MAC  da shield ethernet. 
+* Caso esteja sendo utilizada apenas uma shield ethernet pode se manter o mesmo.
+* Caso esteja sendo utilizada duas ou mais shields, cada uma deve ter seu MAC diferente para evitar conflitos
+
+2- Na linha 24 preencher o vetor ip com o endereço ip da shield ethernet na rede
+* O endereço ip deve ser verificado na rede para se evitar conflitos
+
+3- Na linha 25 preencher o vetor server com o endereço ip do servidor onde está o MQTT
+
+4- Na linha 28 preencher o vetor gruposEquipes com os id's dos grupos que serão utilizados
+* Caso seja apenas um grupo, B por exemplo. Ex.: gruposEquipes[] = {'B'};
+* Caso sejam dois ou mais grupos, A e B por exemplo. Ex.: gruposEquipes[] = {'A','B'};
+* O id dos grupos deve ser definido como char, ou seja entre aspas simples ''
+
+5- Na linha 29 definir o id do módulo. Ex.: idModulo = 30;
+
+6- Na linha 30 definir o canal em que o módulo irá operar. Ex.: canalModulo = 5;
+
+7- Na linha 31 definir a quantidade de módulos emissores em operação. Ex.: qtdEmissores = 3;
+

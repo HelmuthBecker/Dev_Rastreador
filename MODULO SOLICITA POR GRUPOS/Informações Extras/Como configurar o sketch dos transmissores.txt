@@ -1,0 +1,23 @@
+Como configurar os sketchs para uso:
+
+Transmissor:
+
+1- Na linha 21 defina a variavel "idGrupo" com o id do grupo ao qual o módulo pertence, 'A', 'B', 'C' e assim por diante. Cada grupo deve conter preferencialmente no máximo 10 módulos cada. Ex.: idGrupo = 'B';
+
+2- Na linha 22 preencha o vetor infoReceptor com as informações referentes ao receptor, como endereçoH,
+endereçoL, e o canal de operação. Ex.: infoReceptor [] = {0, 30, 5};
+
+3- Na linha 23 preencha a variavel idModulo com o id referente ao módulo transmissor. Lembrando que:
+* O id dos módulo deve ser sempre em caracteres numéricos. Ex.: "00", "01", "02" e assim por diante.
+* O valor deve ser passado no formato String
+* Cada módulo deve receber um id diferente, começando em "00"
+* Cada id é utilizado para calcular o sincronismo de envio dos módulos, haja visto que o módulo receptor
+só pode receber mensagens de um módulo emissor por vez.
+* A id do módulo deve sempre ser informada no formato de dois digitos. Ex.: "01", "02", "12"
+
+4- Na linha 24 definir o canal de operação do módulo emissor, que deve ser o mesmo canal definido para o
+módulo receptor. Ex.: canalModulo = 5;
+
+5- Comentar ou descomentar como necessário, na função loop que está no final do sketch, em qual modo de operação o transmissor irá operar. Modos possíveis:
+* getGPS - Neste modo o módulo transmissor irá obter dados em tempo real diretamente do módulo GPS Neo6M
+* dadosFake - Neste modo será transmitida uma String simulando os dados obtidos pelo gps. Uso apenas para fins de teste onde seja inviável o uso do GPS

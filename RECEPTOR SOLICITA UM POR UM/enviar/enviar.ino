@@ -85,7 +85,7 @@ void getGPS(){                                                  //Função que o
    float flat, flon;
    String diaMes, horaMinSeg, dados, velocidade;
 
-   pausa = millis() + 3000;
+   pausa = millis() + 4000;
    
  
      while (serialGPS.available()) {                             //Recebe os dados pela serial do GPS
@@ -153,7 +153,7 @@ void dadosFake() {                                                              
    String dados;
    unsigned long pausa;
    
-   pausa = millis() + 2000;
+   pausa = millis() + 4000;
    
    tensaoBateria();         //Chama a função que irá obter a tensão da bateria
    

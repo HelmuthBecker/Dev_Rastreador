@@ -22,9 +22,9 @@
 #include <EBYTE.h>
 #include <SoftwareSerial.h>
 
-byte mac[]    = { 0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x02 };       // Ethernet shield (W5100) MAC address
+byte mac[]    = { 0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x02 };        // Ethernet shield (W5100) MAC address
 byte ip[]     = { 192, 168, 1, 49  };                          // Ethernet shield (W5100) IP address
-byte server[] = { 192, 168, 1, 156 };                         // IP do servidor MQTT
+byte server[] = { 192, 168, 1, 156 };                          // IP do servidor MQTT
 
 SdFat SD;
 File myFile;                             //Objeto File do SD
@@ -33,47 +33,52 @@ size_t bytesRecebidos;
 //char mensagem[148];                      //mensagem contendo os dados recebidos dos módulos transmissores
 char mensagem [491];
 
-#define ARDUINO_CLIENT_ID "ARDUINO"      //ID do cliente para publicação no broker MQTT
-#define LED8 A0                          //LED status MQTT na porta A0
-#define LED9 A1                          //LED status SD na porta A1
+#define ARDUINO_CLIENT_ID "ARDUINO"        //ID do cliente para publicação no broker MQTT
+#define LED8   A0                          //LED status MQTT na porta A0
+#define LED9   A1                          //LED status SD na porta A1
+#define LED10  A3                          //LED status POWER
 
-SoftwareSerial serialLORA(12,3);          //Software serial do módulo LORA (7-Rx - 3-Tx)
-EBYTE emissor(&serialLORA, 6, 5, 2);     //Objeto Ebyte
+//SoftwareSerial serialLORA(12,3);          //Software serial do módulo LORA (7-Rx - 3-Tx)
+EBYTE emissor(&Serial2, 6, 5, 2);      //Objeto Ebyte
 
 EthernetClient ethClient;               
-PubSubClient client(ethClient);          //Objeto PubSubClient
+PubSubClient client(ethClient);           //Objeto PubSubClient
 
 void setup() {
   
-Serial.begin(9600);                      //Inicia Serial Fisíca
-serialLORA.begin(9600);                  //Inicia Serial Lógica
-iniciar_SD();
-Ethernet.init(10);
-Ethernet.begin(mac, ip);                 //Inicia o Ethernet shield
-client.setServer(server, 1883);          //Inicia e define IP e porta do servidor MQTT
+Serial.begin(9600);                       //Inicia Serial Fisíca
+Serial2.begin(9600);                   //Inicia Serial Lógica
 
 Serial.println("Rede e Seriais OK");
 
-pinMode(LED8, OUTPUT);                 
-pinMode(LED9, OUTPUT);
+pinMode(LED8,  OUTPUT);                 
+pinMode(LED9,  OUTPUT);
+pinMode(LED10, OUTPUT);
 
-digitalWrite(LED8, LOW);
-digitalWrite(LED9, LOW);
+digitalWrite(LED8,  HIGH);
+digitalWrite(LED9,  HIGH);
+digitalWrite(LED10, HIGH);
 
 Serial.println("LED OK");
 
-iniciar_LORA();                    //Inicia o módulo LORA com os parâmetros definidos na função iniciar_LORA
+iniciar_LORA();                     //Inicia o módulo LORA com os parâmetros definidos na função iniciar_LORA
 delay(500);
-//conectar_MQTT();                   //Conecta ao broker MQTT
-digitalWrite(LED8, LOW);
-iniciar_SD();                      //Inicia o módulo SD
+
+//iniciar_SD();                       //Inicia o módulo SD
 digitalWrite(LED9, LOW);
+delay(500);
+
+Ethernet.init(10);
+Ethernet.begin(mac, ip);                 //Inicia o Ethernet shield
+client.setServer(server, 1883);          //Inicia e define IP e porta do servidor MQTT
+//conectar_MQTT();                         //Conecta ao broker MQTT
+digitalWrite(LED8, LOW);
 
 Serial.println("LORA, SD, MQTT OK");
 }
 
 void iniciar_LORA (){
-     serialLORA.listen();                   
+    // serialLORA.listen();                   
        
      emissor.init();                                            //Inicia o módulo
 
@@ -108,7 +113,7 @@ void iniciar_LORA (){
 void salvar_SD() {                                          //Função que salva os dados recebidos no cartão SD
     myFile = SD.open("log.txt", FILE_WRITE);                //Abre o arquivo para edição
     if(myFile){
-      myFile.println(mensagem);                            //Edita o arquivo com os dados recebidos
+      myFile.println(mensagem);                             //Edita o arquivo com os dados recebidos
        myFile.close();                                      //Fecha o arquivo após a edição
        Serial.println("Salvo SD");                          //Exibe mensagem de confirmação de edição concluida
        return;
@@ -128,13 +133,13 @@ void conectar_MQTT(){                                          //Função que co
   }
 }  //Fim conectar_MQTT
 
-void Receber(){                                              //Função que recebe os dados dos módulos
-    for (unsigned int a = 0; a < 490; a++ ){                           //Limpa a variavel mensagem, antes do uso
+void Receber(){                                               //Função que recebe os dados dos módulos
+    for (unsigned int a = 0; a < 490; a++ ){                  //Limpa a variavel mensagem, antes do uso
      mensagem[a] = '0';
      }
-    serialLORA.listen();
-    while (serialLORA.available() > 0){                          
-         bytesRecebidos = serialLORA.readBytesUntil('@', mensagem, 490);    //Recebe dados no buffer até encontrar o caracter * que indica o fim da mensagem
+    //serialLORA.listen();
+    while (Serial2.available() > 0){                          
+         bytesRecebidos = Serial2.readBytesUntil('@', mensagem, 490);    //Recebe dados no buffer até encontrar o caracter @ que indica o fim da mensagem
         }
 }       //Fim Receber
 
@@ -145,19 +150,19 @@ void Publicar(){                                                   //Função qu
 
         if(mensagem[0] == '['){
         Serial.println(mensagem);
-        salvar_SD();
+       // salvar_SD();
                                                     
          client.beginPublish(topico_char,490,false);                //Inicia a publicação no MQTT
-         client.print(mensagem);                                   //Publica a mensagem
-         client.endPublish();                                      //Encerra a publicação no MQTT
+         client.print(mensagem);                                    //Publica a mensagem
+         client.endPublish();                                       //Encerra a publicação no MQTT
        }
 }
 
     void loop() {
       Receber();  //Solicita dados aos módulos transmissores
-      Publicar();
+      Publicar(); //Publica no MQTT e salva o LOG no cartão SD
       //conectar_MQTT();
       digitalWrite(LED8, LOW);
-      iniciar_SD();
+      //iniciar_SD();
       digitalWrite(LED9, LOW);
 }   //Fim loop
