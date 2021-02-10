@@ -18,10 +18,12 @@
 #define LED8  A0                                  //LED de status POWER
 #define LED9  A1                                  //LED de status GPS
 
+//CONFIGURAR ESTES VALORES DE ACORDO COM NECESSÁRIO PARA FUNCIONAMENTO
 char   idGrupo = 'B';                             //Define a qual grupo este módulo pertence
-char   infoReceptor [] = {0, 30, 5};              //Defiine o endereço e o canal do módulo receptor - addressH, addressL, channel / addressH e addressL se definidos ambos como 255, envia mensagem para todos módulos do canal simultaneamente(broadcast)
-String idModulo = "01";                           //Define o id deste módulo em0issor. Define o id do módulo emissor contido na mensagem enviada para o receptor em terra - Definir um Id diferente para cada módulo sempre no formato de dois dígitos Ex.: 01,02,10
+char   infoReceptor [] = {0, 31, 5};              //Defiine o endereço e o canal do módulo receptor - addressH, addressL, channel / addressH e addressL se definidos ambos como 255, envia mensagem para todos módulos do canal simultaneamente(broadcast)
+String idModulo = "02";                           //Define o id deste módulo emissor. Define o id do módulo emissor contido na mensagem enviada para o receptor em terra - Definir um Id diferente para cada módulo sempre no formato de dois dígitos Ex.: 01,02,10
 byte   canalModulo = 5;                           //Define o canal em que este módulo irá operar. Deve ser o mesmo canal que o receptor
+//FIM COFIGURAÇÕES
 
 byte   dados2 [49];                               //Armazena os valores em bytes da String dados, que contém a informação do GPS
 
@@ -32,6 +34,17 @@ SoftwareSerial serialGPS(11,12);           //Rx - Tx (GPS)
 
 EBYTE emissor(&serialLORA, 7, 8, 10);      //Parâmetros do módulo LORA (RX,TX,M0,M1,AUX)
 TinyGPS gps;                               //Objeto TinyGPS
+
+/*
+ * Função iniciarLORA
+ * Executada uma vez dentro da função Setup, é responsável por definir e passar todos os parâmetros de funcionamento do módulo Lora em uso 
+ * Após ser executada exibe no monitor serial os parametros que foram definidos no módulo.
+ * Analise sempre essa informação, pois é um indicativo importante se o módulo está corretamente configurado ou não.
+ * Erros no sketch ou mesmo pinos conectados incorretamente podem atrapalhar o funcionamento correto do módulo LORA.
+ * Caso isso ocorra revise o sketch e as conexões do módulo.
+ * Para mais informações de configuração e funcionamento do módulo consulte o Usermanual do mesmo.
+ */
+
 void iniciarLORA (){
      int addressL = idModulo.toInt();                          //Utiliza o valor definido na String idModulo para atribuir o endereçoL do modulo nas configurações da placa LORA (função iniciarLORA)
     
@@ -57,6 +70,15 @@ void iniciarLORA (){
      emissor.PrintParameters();                                 //Exibe os parâmetros configurados
   } //Fim iniciarLORA  
 
+/*
+ * Função lePorta
+ * Lê a tensão que entra na porta A2
+ * Executa um número de leituras definido na variável AMOSTRAS, e calcula a média dessas leituras para definir o valor aproximado da tensão na porta
+ * Retorna um valor float
+ * Necessita como parâmetro o endereço da porta onde deve ser feita a leitura
+ * Como as portas analógicas do arduino não suportam tensões acima de 5v, a tensão aplicada na porta deve ser reduzida por meio de divisores de tensão
+ */
+
 float lePorta(uint8_t portaAnalogica) {                         //Função que lê o valor de tensão recebido na porta A2 
   float total=0;  
   for (int i=0; i<AMOSTRAS; i++) {
@@ -66,12 +88,18 @@ float lePorta(uint8_t portaAnalogica) {                         //Função que l
   return total / (float)AMOSTRAS;                               //retorna o valor médio obtido das 15 leituras na porta A2
 } //Fim lePorta
 
+/*
+ * Função tensãoBateria
+ * Calcula o valor real da tensão da bateria ou fonte de alimentação utilizada para alimentar o módulo
+ * O cálculo é feito utilizando a tensão lida na porta A2 multiplicado por um fator de correção definido na variável relaçãoA2
+ * Por fim atribui o resultado a variável global tensaoA2
+ */
+
 void tensaoBateria() {                                          //Função que calcula o valor de tensão da bateria, de acordo com o valor lido na porta A2
 
 float tensaoA2;
 float aRef=5;                                                   //Máximo valor de tensão aceito pela porta A2
-float relacaoA2=2.5;                                            //Power Bank Fator para transformar o valor Vout recebido na porta A2, no valor de Vin (que entra antes do divisor de tensão) 
-//float relacaoA2=2.8;                                          //Bateria 9V
+float relacaoA2=2.5;                                            //Power Bank - Fator para transformar o valor Vout recebido na porta A2, no valor de Vin (que entra antes do divisor de tensão) 
   
   tensaoA2 = ((lePorta(A2) * aRef) / 1024.0)* relacaoA2;        //Calculo de tensão
   
@@ -82,6 +110,14 @@ float relacaoA2=2.5;                                            //Power Bank Fat
     tensaoBat = String(tensaoA2,1);                             //Para horas maiores que 10, não adiciona nada, apenas passa o valor como string para outra variavel
   }  
 } //Fim tensaoBateria  
+
+/*
+ * Função getGPS
+ * Obtém os dados do gps e juntamente com o valor obtido da função tensaoBateria e forma a mensagem que será enviada ao módulo em terra
+ * Executa algumas verificações afim de manter a mensagem final com um padrão fixo de 49 caracteres(incluso o caracter null de fim de string /0)
+ * Transforma a mensagem de string para um vetor de char
+ * Após a mensagem pronta, chama a função receber, que irá aguardar pela solicitação dos dados
+ */
 
 void getGPS(){                                                  //Função que obtém os dados de GPS
  
@@ -135,16 +171,22 @@ String diaMes, horaMinSeg, dados, velocidade;
   dados.getBytes(dados2, sizeof(dados2));                   //Converte a String em vetor de bytes
 }
 
-    Serial.println(dados);                                    //Exibe os dados (apenas para fins de teste)
+    Serial.println(dados);                                  //Exibe os dados (apenas para fins de teste)
     receber();
   } //Fim getGPS       
-          
+ 
+ /*         
+  * Função receber          
+  * Fica em loop até receber o Id de solicitação de dados emitido pelo módulo em terra
+  * Ao receber o Id chama a função transmitir que irá enviar os dados do gps
+  */
+  
 void receber(){
 serialLORA.listen();    
  
 byte incomingByte;                                          //Armazena o char que indica quando deve se enviar os dados do GPS
   
-  do {                                                      //Se mantém em loop enquanto não receber solicitação do receptor em terra
+  do {                                                      //Se mantém em loop enquanto não receber a Id de solicitação do receptor em terra
     if (serialLORA.available() > 0){
       incomingByte = serialLORA.read();
     }
@@ -154,11 +196,18 @@ byte incomingByte;                                          //Armazena o char qu
        transmitir(); 
   }
 } //Fim receber
+
+/*
+ * Função transmitir
+ * Envia a mensagem com os dados do gps em formato vetor de char
+ * Aguarda por um tempo determinado antes de enviar
+ * Após o envio reinicia a serial física, a serial do lora e a serial do gps afim de limpar o buffer de dados
+ */
   
 void transmitir(){
 serialLORA.listen();
 
-int tempoEnvio = (idModulo.toInt())*1200;    //Define o tempo de envio de cada módulo, afim de sincronizar os envios e evitar o envio de dois ou mais módulos simultaneamente
+int tempoEnvio = (idModulo.toInt())*500;    //Define o tempo de envio de cada módulo, afim de sincronizar os envios e evitar o envio de dois ou mais módulos simultaneamente
 
 byte mensagem [] = {
   infoReceptor[0], infoReceptor [1], infoReceptor [2],     //Endereço e canal do módulo receptor
@@ -172,18 +221,25 @@ byte mensagem [] = {
   delay(tempoEnvio);                                         //Aguarda o tempo determinado para o envio                        
   serialLORA.write(mensagem, sizeof(mensagem));              //envia a msg pelo LORA
   
-  serialGPS.end();
+  serialGPS.end();                                           //Encerra a serialGPS para limpar o buffer de recebimento
   Serial.end();                                              //Encerra a serial para limpar o buffer de recebimento
   serialLORA.end();                                          //Encerra a softSerial para limpar o buffer de recebimento
   delay(500);
   Serial.begin(9600);                                        //Reinicia a Serial
   serialLORA.begin(9600);                                    //Reinicia a softSerial
-  serialGPS.begin(9600);
+  serialGPS.begin(9600);                                     //Reinicia a serialGPS
 } //Fim transmitir
 
-void dadosFake() {                      //Função que gera dados FAKE (apenas para testes temporariamente)
+/*
+ * Função dadosFake
+ * Simula uma mensagem a ser enviada
+ * Apenas para testes em que não seja necessário o uso dos dados reais do gps
+ */
 
-  String dados = "["+idModulo+",-26.242370,-48.642423,2806,182100,00.2,00.1]"; 
+void dadosFake() {                                            //Função que gera dados FAKE (apenas para testes temporariamente)
+
+  String dados = "[02,-26.242370,-48.642423,2806,182100,00.2,00.1]";
+  //String dados = "["+idModulo+",-26.242370,-48.642423,2806,182100,00.2,00.1]"; 
   dados.getBytes(dados2, sizeof(dados2));
   //Serial.println(dados);                                    //Exibe os dados (apenas para fins de teste
   receber();
@@ -211,5 +267,5 @@ iniciarLORA();                          //Função que passa os parâmetros de f
 void loop() {             
 
 //getGPS();                             //Obtém dados do modulo GPS
-dadosFake();                        //Obtém dados simulados para fins de teste
+dadosFake();                            //Obtém dados simulados para fins de teste
 }

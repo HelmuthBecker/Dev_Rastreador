@@ -8,8 +8,8 @@ Transmissor:
 endereçoL, e o canal de operação. Ex.: infoReceptor [] = {0, 30, 5};
 
 3- Na linha 23 preencha a variavel idModulo com o id referente ao módulo transmissor. Lembrando que:
-* O id dos módulo deve ser sempre em caracteres numéricos. Ex.: "00", "01", "02" e assim por diante.
 * O valor deve ser passado no formato String
+* O id dos módulo deve ser sempre em caracteres numéricos. Ex.: "00", "01", "02" e assim por diante.
 * Cada módulo deve receber um id diferente, começando em "00"
 * Cada id é utilizado para calcular o sincronismo de envio dos módulos, haja visto que o módulo receptor
 só pode receber mensagens de um módulo emissor por vez.
