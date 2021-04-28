@@ -45,7 +45,7 @@ int     qtdCharRcb  = 0;                         //Contador que armazena quantos
 
 
 SoftwareSerial mySerial(12,3);                   //Software serial do módulo LORA (12-Rx - 3-Tx)
-EBYTE emissor(&Serial2, 6, 5, 2);               //Objeto Ebyte
+EBYTE emissor (&mySerial, 6, 5, 2);               //Objeto Ebyte
 
 EthernetClient  ethClient;                       //Objeto EthernetClient
 PubSubClient    client(ethClient);               //Objeto PubSubClient
@@ -158,9 +158,9 @@ void receber() {
 
    
   while (pausa > millis()){
-    if (Serial2.available() > 0){
-    //if (mySerial.available() > 0){
-      rc = Serial2.read();
+    //if (Serial2.available() > 0){
+    if (mySerial.available() > 0){
+      rc = mySerial.read();
       dados[ndx] = rc;
       ndx++;
       if (ndx >= numChars) {               //Caso a quantidade de dados recebida atinja o limite
@@ -204,7 +204,7 @@ void solicitar(){                                                     //Função
     digitalWrite(LED9, LOW);
    
     byte solicitacao[] = {0xFF, 0xFF, canalModulo, gruposEquipes[a]};       //Solicita dados a todos os módulos (0xFF 0xFF) operando no canal (canalModulo) que estejam no grupo chamado
-    Serial2.write(solicitacao,sizeof(solicitacao));
+    mySerial.write(solicitacao,sizeof(solicitacao));
     receber();                                                              //Função que recebe dados dos rastreadores   
   }
 } //Fim Solicitar()
@@ -242,7 +242,7 @@ void publicar(){                                               //Função que pu
 void setup(){
 
   Serial.begin(9600);                               //Inicia a Serial
-  Serial2.begin(9600);
+  //Serial2.begin(9600);
   mySerial.begin(9600);                             //Inicia a softSerial
 
   Serial.println("Seriais Física e Lógica OK");

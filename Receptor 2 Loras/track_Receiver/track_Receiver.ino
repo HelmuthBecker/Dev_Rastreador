@@ -4,11 +4,14 @@
                                         ***SUBSTITUIR O VALOR DO PARÂMETRO "SetTransmitPower" NA FUNÇÃO "INICIAR LORA" CONFORME NECESSÁRIO***
 
                                            
- Pinos Utilizados pela Shield Ethernet                          Objeto EBYTE (Pinos Digitais)        LEDs (Pinos Analógicos)   
-  **50, 51, 52, 4, 10        (Arduino Mega)                       ** 6,5,2 - M0, M1, AUX              ** A0 - Status MQTT  
-  **10, 11, 12, 13, 4, 10    (Arduino UNO)                                                            ** A1 - Status SD
-                                                                                                      ** A3 - Status Power 
-*/
+ Pinos Utilizados pela Shield Ethernet                          Objeto EBYTE (Pinos Digitais)                     LEDs (Pinos Analógicos)   
+  **50, 51, 52, 4, 10        (Arduino Mega)                     ** emissor1(&Serial1, 3, 2, 34);                  ** A0 - Status MQTT  
+  **10, 11, 12, 13, 4, 10    (Arduino UNO)                      ** emissor2(&Serial2, 6, 5, 36);                  ** A1 - Status Lora 1
+                                                                                                                  ** A2 - Status Cartão Sd 
+                                                                                                                  ** A3 - Status Lora 2
+                                                                                                                  ** A4 - PWR_Led
+
+*/  
 
 #include <SPI.h>
 #include <Ethernet.h>
@@ -24,30 +27,35 @@ byte mac[]    = { 0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x02 };       // Ethernet shield
 byte ip[]     = { 192, 168, 1, 49  };                         // Ethernet shield (W5100) IP address
 byte server[] = { 192, 168, 1, 104 };                         // IP do servidor MQTT
 
-char   idSolicitacao   = 'B';                                 //Id do grupo
-char   idModulo1       = 30;                           //Define o id do modulo LORA1
-char   idModulo2       = 31;                           //Define o id do modulo LORA2
+
+char   idSolicitacao   = 'B';                          //Id de solicitação de dados
+char   idModulo1       = 31;                           //Define o id do modulo LORA1
+char   idModulo2       = 32;                           //Define o id do modulo LORA2
 char   canalModulo     = 5;                            //Define o canal em que os módulos irão operar
-int    qtdEmissores    = 3;                            //Define a quantidade de emissores disponíveis
-String topico_str = "/app1/dados/equipe00";            //Cria o endereço do tópico MQTT onde serão publicados os dados Ex:. /app/dados/equipe07 ou /app/dados/equipe10
+int    qtdEmissores    = 3;                            //Define a quantidade de módulos emissores disponíveis
+//String topico_str      = "/rastreador/dados";        //Cria o endereço do tópico MQTT onde serão publicados os dados Ex:. /app/dados/equipe07 ou /app/dados/equipe10
+String topico_str      = "/app1/dados/equipe00";       //Cria o endereço do tópico MQTT onde serão publicados os dados Ex:. /app/dados/equipe07 ou /app/dados/equipe10
+int    tempoEspera     = 1000 * qtdEmissores;          //Define por quantos segundos o módulo vai aguardar por dados dos rastreadores (qtd de rastreadores * 1000ms de espera por módulo)
 //FIM COFIGURAÇÕES
 
-boolean newData1 = false;                         //Indica se novos dados foram recebidos
-String  mensagem1;                                //Armazena a mensagem contendo todos os dados enviados de todos os emissores
-int     qtdCharRcb1  = 0;                         //Contador que armazena quantos caracteres foram recebidos pelo módulo, vindos dos rastreadores
+boolean newData1 = false;                         //Indica se novos dados foram recebidos pelo módulo Lora 1
+String  mensagem1;                                //Armazena a mensagem contendo todos os dados enviados de todos os emissores de numeração 0 ou par
+int     qtdCharRcb1  = 0;                         //Contador que armazena quantos caracteres foram recebidos pelo módulo LoRa 1, vindos dos emissores de numeração 0 ou par
 
-boolean newData2 = false;                         //Indica se novos dados foram recebidos
-String  mensagem2;                                //Armazena a mensagem contendo todos os dados enviados de todos os emissores
-int     qtdCharRcb2  = 0;                         //Contador que armazena quantos caracteres foram recebidos pelo módulo, vindos dos rastreadores
+boolean newData2 = false;                         //Indica se novos dados foram recebidos pelo módulo Lora 2
+String  mensagem2;                                //Armazena a mensagem contendo todos os dados enviados de todos os emissores de numeração impar
+int     qtdCharRcb2  = 0;                         //Contador que armazena quantos caracteres foram recebidos pelo módulo, vindos dos emissores de número impar
 
 #define ARDUINO_CLIENT_ID "ARDUINO"               //ID do cliente para publicação no broker MQTT
 
-#define LED8  A0                                  //LED de status MQTT na porta A0
-#define LED9  A1                                  //LED de status SD na porta A1
-#define LED10 A3                                  //LED de status Power
+#define MQTT_LED   A0                             //LED de status MQTT na porta A0
+#define LORA1_LED  A1                             //LED de status SD na porta A1
+#define SD_LED     A2
+#define LORA2_LED  A3                             //LED de status Power
+#define PWR_LED    A4
 
-EBYTE emissor1(&Serial1, 3, 2, 30);               //Objeto Ebyte
-EBYTE emissor2(&Serial2, 6, 5, 31);               //Objeto Ebyte
+EBYTE emissor1(&Serial1, 3, 2, 34);               //Objeto Ebyte
+EBYTE emissor2(&Serial2, 6, 5, 36);               //Objeto Ebyte
 
 EthernetClient  ethClient;                        //Objeto EthernetClient
 PubSubClient    client(ethClient);                //Objeto PubSubClient
@@ -68,7 +76,7 @@ void iniciarLORA1(){                                             //Função que 
      emissor1.SetMode(MODE_NORMAL);                              //Modo de funcionamento do módulo
      emissor1.SetAddressH(0);                                    //Endereço H. Pode Variar entre 0 e 254 (Preferível não alterar)
      emissor1.SetAddressL(idModulo1);                            //Endereço L. Pode Variar entre 0 e 254 
-     emissor1.SetAirDataRate(ADR_2400);                          //AirDataRate 2400kbps
+     emissor1.SetAirDataRate(ADR_2400);                           //AirDataRate 2400kbps
      emissor1.SetUARTBaudRate(UDR_9600);                         //BAUDRate 9600
      emissor1.SetChannel(canalModulo);                           //Canal de operação 
      emissor1.SetParityBit(PB_8N1);                              //Bit Paridade 8N1
@@ -81,7 +89,15 @@ void iniciarLORA1(){                                             //Função que 
      emissor1.SaveParameters(PERMANENT);                         //Salva as modificações na memória do módulo
          
      emissor1.PrintParameters();                                 //Exibe os parâmetros configurados
-    } //Fim iniciarLORA 
+
+//Verifica se o módulo LoRa iniciou com os parâmetros corretos
+     if (emissor1.GetModel() == 50 && emissor1.GetFeatures() == 30){
+      Serial.println("Lora 1 OK");
+     } else {
+        digitalWrite(LORA1_LED,  HIGH);
+        falhaLORA();
+      }
+} //Fim iniciarLORA1
 
 void iniciarLORA2(){                                             //Função que define os parâmetros de configuração do módulo LORA
      emissor2.init();                                            //Inicia o módulo
@@ -102,20 +118,43 @@ void iniciarLORA2(){                                             //Função que 
      emissor2.SaveParameters(PERMANENT);                         //Salva as modificações na memória do módulo
          
      emissor2.PrintParameters();                                 //Exibe os parâmetros configurados
-    } //Fim iniciarLORA 
+
+//Verifica se o módulo LoRa iniciou com os parâmetros corretos
+    if (emissor2.GetModel() == 50 && emissor2.GetFeatures() == 30){
+      Serial.println("Lora 2 OK");      
+    } else {
+        digitalWrite(LORA2_LED,  HIGH);
+        falhaLORA();
+     }
+  } //Fim iniciarLORA2
+
+/*
+ *Função falhaLORA
+ *Caso algum módulo LORA não inicie corretamente, pausa a inicialização do receptor, escreve mensagem de erro na serial e acende LED indicativo 
+ */
+
+void falhaLORA(){
+  bool falha = true;
+  Serial.println("Erro módulo LORA");
+  while (falha == true){    
+    delay(10000);
+  }
+}
 
 /*
  * Função iniciar_SD
  * Responsável por verificar se há um cartão SD conectado no slot SD da shield ethernet, e se o mesmo está formatado corretamente e pronto para uso.
  * Caso haja algu problema com cartão SD, entra em loop infinito exibindo a mensagem "ERRO SD" até que o SD seja trocado.
  */
-
+ 
 void iniciar_SD(){                                              //Função que inicia o módulo SD
    
-  while (!SD.begin(4)){
+  if (!SD.begin(4)){
     Serial.println("ERRO SD");
-    digitalWrite(LED9, HIGH);
-    delay(1000);
+    while (!SD.begin(4)){
+      digitalWrite(SD_LED, HIGH);
+      delay(1000);
+    }
   } 
 }// Fim iniciar SD
 
@@ -152,12 +191,13 @@ void salvar_SD(String mensagem){                     //Função que salva os dad
  */
 
 void conectar_MQTT(){                                          //Função que conecta ao MQTT
-  while (!client.connect(ARDUINO_CLIENT_ID)){                   
-    
+  if (!client.connect(ARDUINO_CLIENT_ID)){
     Serial.println("FALHA MQTT");
-    digitalWrite(LED8, HIGH);
-    client.connect(ARDUINO_CLIENT_ID);
-    delay(1000);                                              // Aguarda 1 seg antes de tentar conectar novamente
+    while (!client.connect(ARDUINO_CLIENT_ID)){                   
+      digitalWrite(MQTT_LED, HIGH);
+      client.connect(ARDUINO_CLIENT_ID);
+      delay(1000);                                              // Aguarda 1 seg antes de tentar conectar novamente
+    }
   }
 }  //Fim conectar_MQTT
 
@@ -169,23 +209,22 @@ void conectar_MQTT(){                                          //Função que co
  */
 
 void receber() {
-  int tempoEspera = 700 * qtdEmissores;                  //Define por quantos segundos o módulo vai aguardar por dados dos rastreadores (qtd de rastreadores * 1300ms de espera por módulo)
   unsigned long pausa = millis() + tempoEspera;          //Adiciona a função millis() aos segundos de espera
     
-  const int numChars1 = (49 * qtdEmissores)/2;           //Limite máximo de caracteres a serem recebidos                                (qtd de rastreadores * tamanho da mensagem enviada (49 char))
-  byte dados1[numChars1];                                //Array de bytes que irá armazenar os dados fornecidos pelos rastreadores
-  static int ndx1 = 0;                                   //Indice que conta quantos caracteres foram recebidos
+  const int numChars1 = (49 * qtdEmissores);            //Limite máximo de caracteres a serem recebidos                                (qtd de rastreadores * tamanho da mensagem enviada (49 char))
+  byte dados1[numChars1];                               //Array de bytes que irá armazenar os dados fornecidos pelos rastreadores
+  static int ndx1 = 0;                                  //Indice que conta quantos caracteres foram recebidos
   
-  const int numChars2 = (49 * qtdEmissores)/2;           //Limite máximo de caracteres a serem recebidos                                (qtd de rastreadores * tamanho da mensagem enviada (49 char))
-  byte dados2[numChars2];                                //Array de bytes que irá armazenar os dados fornecidos pelos rastreadores
-  static int ndx2 = 0;                                   //Indice que conta quantos caracteres foram recebidos
-     
+  const int numChars2 = (49 * qtdEmissores);            //Limite máximo de caracteres a serem recebidos                                (qtd de rastreadores * tamanho da mensagem enviada (49 char))
+  byte dados2[numChars2];                               //Array de bytes que irá armazenar os dados fornecidos pelos rastreadores
+  static int ndx2 = 0;                                  //Indice que conta quantos caracteres foram recebidos
+
   while (pausa > millis()){
-    if (Serial1.available() > 0){
+     if (Serial1.available() > 0){
       dados1[ndx1] = Serial1.read();
       if (dados1[ndx1] != 'B'){
         ndx1++;
-        if (ndx1 >= numChars1) {               //Caso a quantidade de dados recebida atinja o limite
+        if (ndx1 >= numChars1) {                        //Caso a quantidade de dados recebida atinja o limite
            ndx1 = numChars1 - 1;
            dados1[ndx1] = '\0';
         }
@@ -195,7 +234,7 @@ void receber() {
       dados2[ndx2] = Serial2.read();
       if (dados2[ndx2] != 'B'){
         ndx2++;
-        if (ndx2 >= numChars2) {               //Caso a quantidade de dados recebida atinja o limite
+        if (ndx2 >= numChars2) {                        //Caso a quantidade de dados recebida atinja o limite
            ndx2 = numChars2 - 1;
            dados2[ndx2] = '\0';
         }
@@ -218,9 +257,12 @@ void receber() {
     ndx2 = 0;                         //Define o indice novamente para 0
     newData2 = true;                  //Define newData como true indicando que há novos dados recebidos
   }
+
+  if (newData1 == true || newData2 == true){      //Caso dados tenham sido recebidos por algum dos modulos, aciona a função publicar()
   publicar();
   return; 
-}    //Fim Receber
+  }
+ }    //Fim Receber
 
 /*
  * Função solicitar
@@ -232,12 +274,12 @@ void receber() {
 void solicitar(){                                                         //Função que solicita dados dos rastreadores
      
     conectar_MQTT();                                                      //A cada iteração do loop verifica se a conexão com o MQTT está ativa
-    digitalWrite(LED8, LOW);
+    digitalWrite(MQTT_LED, LOW);
     iniciar_SD();                                                         //A cada iteração do loop verifica se o módulo SD está ativo
-    digitalWrite(LED9, LOW);
+    digitalWrite(SD_LED, LOW);
    
     byte solicitacao[] = {0xFF, 0xFF, canalModulo, idSolicitacao};       //Solicita dados a todos os módulos (0xFF 0xFF) operando no canal (canalModulo) que estejam no grupo chamado
-    Serial1.write(solicitacao,sizeof(solicitacao));
+    Serial1.write(solicitacao,sizeof(solicitacao));                      //Módulo LORA na serial1 envia o char de solicitação de dados
     receber();                                                           //Função que recebe dados dos rastreadores
 
 } //Fim Solicitar()
@@ -263,6 +305,10 @@ void publicar(){                                                 //Função que 
     client.beginPublish(topico_char,qtdCharRcb1,false);          //Inicia a publicação no MQTT      **Parâmetros - topico_char(endereço do topico MQTT) / qtdCharRcb(quantos caracteres serão publicados) / false(Não alterar)**                 
     client.print(mensagem1);                                     //Publica a mensagem
     client.endPublish();                                         //Encerra a publicação no MQTT
+
+    digitalWrite(MQTT_LED,  HIGH);
+    delay(150);
+    digitalWrite(MQTT_LED,  LOW);
   }
   if (newData2 == true) {                                        //Caso tenha recebido dados
      
@@ -276,6 +322,10 @@ void publicar(){                                                 //Função que 
     client.beginPublish(topico_char,qtdCharRcb2,false);          //Inicia a publicação no MQTT      **Parâmetros - topico_char(endereço do topico MQTT) / qtdCharRcb(quantos caracteres serão publicados) / false(Não alterar)**                 
     client.print(mensagem2);                                     //Publica a mensagem
     client.endPublish();                                         //Encerra a publicação no MQTT
+
+    digitalWrite(MQTT_LED,  HIGH);
+    delay(150);
+    digitalWrite(MQTT_LED,  LOW);
   }
     Serial.end();                                                //Encerra a serial para limpar o buffer de recebimento
     Serial1.end();
@@ -291,32 +341,30 @@ void setup(){
   Serial.begin(9600);                                            //Inicia a Serial
   Serial1.begin(9600);
   Serial2.begin(9600);
+ 
+  pinMode(MQTT_LED,   OUTPUT);                 
+  pinMode(SD_LED,     OUTPUT);
+  pinMode(PWR_LED,    OUTPUT);
+  pinMode(LORA1_LED,  OUTPUT);
+  pinMode(LORA2_LED,  OUTPUT);
+  
+  digitalWrite(PWR_LED,   HIGH);
 
-  Serial.println("Seriais Física e Lógica OK");
-
-  pinMode(LED8,  OUTPUT);                 
-  pinMode(LED9,  OUTPUT);
-  pinMode(LED10, OUTPUT);
-
-  digitalWrite(LED8,  HIGH);
-  digitalWrite(LED9,  HIGH);
-  digitalWrite(LED10, HIGH);
-
-  Serial.println("LED OK");
-
-  iniciarLORA1();                                  //Inicia o módulo LORA com os parâmetros definidos na função iniciar_LORA
-  iniciarLORA2();                                  //Inicia o módulo LORA com os parâmetros definidos na função iniciar_LORA
+  Serial.println("Iniciando...");
+  
+  iniciarLORA1();                                  //Inicia o módulo LORA 1 com os parâmetros definidos na função iniciar_LORA1
+  iniciarLORA2();                                  //Inicia o módulo LORA 2 com os parâmetros definidos na função iniciar_LORA2
   delay(500);
 
   iniciar_SD();                                    //Inicia o módulo SD
   Serial.println("SD OK"); 
-  digitalWrite(LED9, LOW);
+  digitalWrite(SD_LED,  LOW);
   Ethernet.init(10);
   Ethernet.begin(mac, ip);                         //Inicia o Ethernet shield
   client.setServer(server, 1883);                  //Inicia e define IP e porta do servidor MQTT
   conectar_MQTT();                                 //Conecta ao broker MQTT
-  digitalWrite(LED8, LOW);
   Serial.println("REDE/MQTT OK");
+  digitalWrite(MQTT_LED,  LOW);
 } //Fim Setup()
 
 void loop() {
